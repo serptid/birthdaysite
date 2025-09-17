@@ -5,26 +5,32 @@ import { users } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 
 export async function POST(req: Request) {
-  const { nickname, email } = await req.json();
+  let { nickname, email } = await req.json();
 
   if (!nickname || !email) {
     return NextResponse.json({ error: "nickname и email обязательны" }, { status: 400 });
   }
 
-  const row = await db.query.users.findFirst({
-    where: and(eq(users.nickname, nickname), eq(users.email, email)),
+  // тот же формат ника, что и при регистрации
+  nickname = nickname.trim().toUpperCase();
+
+  const user = await db.query.users.findFirst({
+    where: and(eq(users.email, email), eq(users.nickname, nickname)),
   });
 
-  if (!row) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+  if (!user) {
+    return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+  }
 
-  (await cookies()).set("session", JSON.stringify({
-    id: row.id, nickname: row.nickname, email: row.email,
-  }), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
-  if (!users.isVerified) {
-  return NextResponse.json({ error: "email_not_verified" }, { status: 403 });
-}
-  return NextResponse.json({ id: row.id, nickname: row.nickname, email: row.email });
-  
+  if (!user.isVerified) {
+    return NextResponse.json({ error: "email_not_verified" }, { status: 403 });
+  }
 
+  (await cookies()).set(
+    "session",
+    JSON.stringify({ id: user.id, nickname: user.nickname, email: user.email }),
+    { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 }
+  );
 
+  return NextResponse.json({ id: user.id, nickname: user.nickname, email: user.email });
 }

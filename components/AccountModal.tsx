@@ -21,6 +21,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
   const [nickname, setNickname] = useState("")
   const [email, setEmail] = useState("")
   const [user, setUser] = useState<SessionUser | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   // загружаем текущего пользователя
   useEffect(() => {
@@ -37,22 +38,8 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
   }, [open])
 
   async function handleLogin() {
+    setMessage(null)
     const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nickname, email }),
-    })
-    const data = await res.json()
-    if (res.ok) {
-      setUser(data) // сохраняем пользователя
-      onClose()
-    } else {
-      alert("Ошибка входа: " + data.error)
-    }
-  }
-
-  async function handleRegister() {
-    const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nickname, email }),
@@ -61,8 +48,25 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
     if (res.ok) {
       setUser(data)
       onClose()
+    } else if (data.error === "email_not_verified") {
+      setMessage("Пожалуйста, подтвердите свой email, прежде чем входить.")
     } else {
-      alert("Ошибка регистрации: " + data.error)
+      setMessage("Ошибка входа: " + data.error)
+    }
+  }
+
+  async function handleRegister() {
+    setMessage(null)
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nickname, email }),
+    })
+    const data = await res.json()
+    if (res.ok && data.need_verify) {
+      setMessage("Регистрация прошла. Проверьте почту и подтвердите email.")
+    } else if (!res.ok) {
+      setMessage("Ошибка регистрации: " + data.error)
     }
   }
 
@@ -102,6 +106,11 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+
+            {message && (
+              <p className="text-sm text-red-500">{message}</p>
+            )}
+
             <div className="flex gap-2 pt-4">
               <Button className="flex-1" onClick={handleLogin}>
                 Войти
