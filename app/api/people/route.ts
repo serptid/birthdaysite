@@ -37,8 +37,10 @@ export async function POST(req: Request) {
   return NextResponse.json(row, { status: 201 });
 }
 
-// GET /api/people?date=YYYY-MM-DD
-// GET /api/people?year=YYYY&month=MM
+// GET /api/people
+// ?date=YYYY-MM-DD         → записи на конкретный день
+// ?year=YYYY&month=MM      → записи за месяц
+// без параметров           → все записи пользователя
 export async function GET(req: Request) {
   const userId = await getUserIdFromSession();
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -73,5 +75,30 @@ export async function GET(req: Request) {
     return NextResponse.json(rows);
   }
 
-  return NextResponse.json({ error: "укажи date или year+month" }, { status: 400 });
+  // если параметры не указаны — вернуть все записи пользователя
+  const all = await db
+    .select()
+    .from(peopleTable)
+    .where(eq(peopleTable.userId, userId));
+  return NextResponse.json(all);
+}
+export async function DELETE(req: Request) {
+  const userId = await getUserIdFromSession();
+  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const url = new URL(req.url);
+  const idParam = url.searchParams.get("id");
+  const id = idParam ? Number(idParam) : NaN;
+  if (!id || Number.isNaN(id)) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
+
+  // удаляем только свою запись
+  const res = await db
+    .delete(peopleTable)
+    .where(and(eq(peopleTable.id, id), eq(peopleTable.userId, userId)))
+    .returning();
+
+  if (res.length === 0) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  return NextResponse.json({ ok: true });
 }
