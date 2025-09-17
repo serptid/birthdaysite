@@ -49,7 +49,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
       setUser(data)
       onClose()
     } else if (data.error === "email_not_verified") {
-      setMessage("Пожалуйста, подтвердите свой email, прежде чем входить.")
+      setMessage("Пожалуйста, Подтвердите свою личность через email.")
     } else {
       setMessage("Ошибка входа: " + data.error)
     }
@@ -64,7 +64,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
     })
     const data = await res.json()
     if (res.ok && data.need_verify) {
-      setMessage("Регистрация прошла. Проверьте почту и подтвердите email.")
+      setMessage("Пожалуйста, Подтвердите свою личность через email.")
     } else if (!res.ok) {
       setMessage("Ошибка регистрации: " + data.error)
     }
@@ -110,7 +110,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
             {message && (
               <p
                 className={`text-sm ${
-                  message.startsWith("Регистрация прошла")
+                  message.startsWith("Пожалуйста")
                     ? "text-green-600"
                     : "text-red-500"
                 }`}
