@@ -37,57 +37,26 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
     if (open) loadUser()
   }, [open])
 
-  async function handleRegister() {
+  async function handleMagic() {
     setMessage(null)
     setPending(true)
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname, email }),
-      })
-      const data = await res.json()
-      if (res.ok && data.need_verify) {
-        setMessage("Регистрация прошла. Проверьте почту и подтвердите email.")
-      } else {
-        setMessage("Ошибка регистрации: " + (data.error ?? "unknown"))
-      }
-    } catch {
-      setMessage("Ошибка сети при регистрации")
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function handleLogin() {
-    setMessage(null)
-    setPending(true)
-    try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/magic-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nickname, email }),
       })
       const data = await res.json()
 
-      if (res.ok && data.need_magic) {
+      if (res.ok && data.sent === "login") {
         setMessage("Мы отправили ссылку для входа на ваш email. Откройте письмо и нажмите кнопку.")
-        return
-      }
-      if (res.ok) {
-        setUser(data)
-        onClose()
-        return
-      }
-      if (data.error === "email_not_verified") {
-        setMessage("Подтвердите email перед входом.")
-      } else if (data.error === "user_not_found") {
-        setMessage("Пользователь не найден.")
+      } else if (res.ok && data.sent === "verify") {
+        setMessage("Отправили письмо для подтверждения и входа. Проверьте почту.")
       } else {
-        setMessage("Ошибка входа: " + (data.error ?? "unknown"))
+        setMessage("Ошибка: " + (data.error ?? "unknown"))
       }
     } catch {
-      setMessage("Ошибка сети при входе")
+      setMessage("Ошибка сети")
     } finally {
       setPending(false)
     }
@@ -110,7 +79,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Настройки аккаунта</DialogTitle>
+          <DialogTitle>Аккаунт</DialogTitle>
         </DialogHeader>
 
         {!user ? (
@@ -140,8 +109,8 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
             {message && (
               <p
                 className={`text-sm ${
-                  message.startsWith("Регистрация прошла") ||
-                  message.startsWith("Мы отправили")
+                  message.startsWith("Мы отправили") ||
+                  message.startsWith("Отправили письмо")
                     ? "text-green-600"
                     : "text-red-500"
                 }`}
@@ -151,16 +120,12 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button className="flex-1" onClick={handleLogin} disabled={pending || !nickname || !email}>
-                {pending ? "Подождите..." : "Войти"}
-              </Button>
               <Button
                 className="flex-1"
-                onClick={handleRegister}
-                variant="outline"
+                onClick={handleMagic}
                 disabled={pending || !nickname || !email}
               >
-                {pending ? "Подождите..." : "Зарегистрироваться"}
+                {pending ? "Подождите..." : "Вход / Регистрация"}
               </Button>
               <Button variant="outline" onClick={onClose} disabled={pending}>
                 Закрыть

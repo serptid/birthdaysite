@@ -77,11 +77,11 @@ function baseEmailHTML(opts: {
 }
 
 export async function sendVerifyEmail(to: string, url: string) {
-  const subject = "Подтверждение email — BDsite";
+  const subject = "Подтверждение регистрации — BDsite";
   const html = baseEmailHTML({
-    title: "Подтвердите email",
-    description: "Нажмите кнопку ниже, чтобы активировать аккаунт. Ссылка действует 30 минут.",
-    buttonText: "Подтвердить email",
+    title: "Добро пожаловать в BDsite!",
+    description: "Нажмите кнопку ниже, чтобы подтвердить email и сразу войти. Ссылка действует 30 минут.",
+    buttonText: "Подтвердить и войти",
     url,
     note: "Если вы не регистрировались на BDsite, просто удалите это письмо.",
   });
@@ -90,7 +90,7 @@ export async function sendVerifyEmail(to: string, url: string) {
     from: `BDsite <${process.env.MAIL_FROM!}>`,
     to,
     subject,
-    text: `Подтвердите email: ${url}\nСсылка действует 30 минут.`,
+    text: `Перейдите для подтверждения и входа: ${url}\nСсылка действует 30 минут.`,
     html,
   });
 }
