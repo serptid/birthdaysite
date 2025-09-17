@@ -22,8 +22,8 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
   const [email, setEmail] = useState("")
   const [user, setUser] = useState<SessionUser | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
 
-  // загружаем текущего пользователя
   useEffect(() => {
     async function loadUser() {
       try {
@@ -37,51 +37,72 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
     if (open) loadUser()
   }, [open])
 
-  async function handleLogin() {
+  async function handleRegister() {
     setMessage(null)
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nickname, email }),
-    })
-    const data = await res.json()
-
-    if (res.ok && data.need_magic) {
-      setMessage("Мы отправили ссылку на вход на ваш email. Откройте письмо и нажмите кнопку.")
-      return
-    }
-
-    if (res.ok) {
-      setUser(data)
-      onClose()
-    } else if (data.error === "email_not_verified") {
-      setMessage("Пожалуйста, подтвердите свою личность через email.")
-    } else {
-      setMessage("Ошибка входа: " + data.error)
+    setPending(true)
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname, email }),
+      })
+      const data = await res.json()
+      if (res.ok && data.need_verify) {
+        setMessage("Регистрация прошла. Проверьте почту и подтвердите email.")
+      } else {
+        setMessage("Ошибка регистрации: " + (data.error ?? "unknown"))
+      }
+    } catch {
+      setMessage("Ошибка сети при регистрации")
+    } finally {
+      setPending(false)
     }
   }
 
-  async function handleRegister() {
+  async function handleLogin() {
     setMessage(null)
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nickname, email }),
-    })
-    const data = await res.json()
+    setPending(true)
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname, email }),
+      })
+      const data = await res.json()
 
-    if (res.ok && data.need_verify) {
-      setMessage("Регистрация прошла. Проверьте почту и подтвердите email.")
-    } else if (!res.ok) {
-      setMessage("Ошибка регистрации: " + data.error)
+      if (res.ok && data.need_magic) {
+        setMessage("Мы отправили ссылку для входа на ваш email. Откройте письмо и нажмите кнопку.")
+        return
+      }
+      if (res.ok) {
+        setUser(data)
+        onClose()
+        return
+      }
+      if (data.error === "email_not_verified") {
+        setMessage("Подтвердите email перед входом.")
+      } else if (data.error === "user_not_found") {
+        setMessage("Пользователь не найден.")
+      } else {
+        setMessage("Ошибка входа: " + (data.error ?? "unknown"))
+      }
+    } catch {
+      setMessage("Ошибка сети при входе")
+    } finally {
+      setPending(false)
     }
   }
 
   async function handleLogout() {
-    const res = await fetch("/api/auth/logout", { method: "POST" })
-    if (res.ok) {
-      setUser(null)
-      onClose()
+    setPending(true)
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" })
+      if (res.ok) {
+        setUser(null)
+        onClose()
+      }
+    } finally {
+      setPending(false)
     }
   }
 
@@ -101,6 +122,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
                 placeholder="Ваше имя"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
+                disabled={pending}
               />
             </div>
             <div>
@@ -108,16 +130,18 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
               <Input
                 id="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={pending}
               />
             </div>
 
             {message && (
               <p
                 className={`text-sm ${
-                  message.startsWith("Регистрация") || message.startsWith("Мы отправили")
+                  message.startsWith("Регистрация прошла") ||
+                  message.startsWith("Мы отправили")
                     ? "text-green-600"
                     : "text-red-500"
                 }`}
@@ -127,13 +151,18 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
             )}
 
             <div className="flex gap-2 pt-4">
-              <Button className="flex-1" onClick={handleLogin}>
-                Войти
+              <Button className="flex-1" onClick={handleLogin} disabled={pending || !nickname || !email}>
+                {pending ? "Подождите..." : "Войти"}
               </Button>
-              <Button className="flex-1" onClick={handleRegister} variant="outline">
-                Зарегистрироваться
+              <Button
+                className="flex-1"
+                onClick={handleRegister}
+                variant="outline"
+                disabled={pending || !nickname || !email}
+              >
+                {pending ? "Подождите..." : "Зарегистрироваться"}
               </Button>
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={onClose} disabled={pending}>
                 Закрыть
               </Button>
             </div>
@@ -144,10 +173,10 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
               Вы вошли как <strong>{user.nickname}</strong> ({user.email})
             </p>
             <div className="flex gap-2 pt-4">
-              <Button className="flex-1" onClick={handleLogout} variant="destructive">
-                Выйти
+              <Button className="flex-1" onClick={handleLogout} variant="destructive" disabled={pending}>
+                {pending ? "Выход..." : "Выйти"}
               </Button>
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={onClose} disabled={pending}>
                 Закрыть
               </Button>
             </div>
