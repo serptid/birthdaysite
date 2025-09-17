@@ -108,8 +108,17 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
             </div>
 
             {message && (
-              <p className="text-sm text-red-500">{message}</p>
+              <p
+                className={`text-sm ${
+                  message.startsWith("Регистрация прошла")
+                    ? "text-green-600"
+                    : "text-red-500"
+                }`}
+              >
+                {message}
+              </p>
             )}
+
 
             <div className="flex gap-2 pt-4">
               <Button className="flex-1" onClick={handleLogin}>
