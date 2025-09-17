@@ -20,7 +20,9 @@ export async function POST(req: Request) {
   (await cookies()).set("session", JSON.stringify({
     id: row.id, nickname: row.nickname, email: row.email,
   }), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
-
+  if (!users.isVerified) {
+  return NextResponse.json({ error: "email_not_verified" }, { status: 403 });
+}
   return NextResponse.json({ id: row.id, nickname: row.nickname, email: row.email });
   
 
