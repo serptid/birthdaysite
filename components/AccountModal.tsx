@@ -29,7 +29,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
       try {
         const res = await fetch("/api/auth/me", { cache: "no-store" })
         const data = await res.json()
-        setUser(data.user)
+        setUser(data.user ?? null)
       } catch {
         setUser(null)
       }
@@ -45,11 +45,17 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
       body: JSON.stringify({ nickname, email }),
     })
     const data = await res.json()
+
+    if (res.ok && data.need_magic) {
+      setMessage("Мы отправили ссылку на вход на ваш email. Откройте письмо и нажмите кнопку.")
+      return
+    }
+
     if (res.ok) {
       setUser(data)
       onClose()
     } else if (data.error === "email_not_verified") {
-      setMessage("Пожалуйста, Подтвердите свою личность через email.")
+      setMessage("Пожалуйста, подтвердите свою личность через email.")
     } else {
       setMessage("Ошибка входа: " + data.error)
     }
@@ -63,8 +69,9 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
       body: JSON.stringify({ nickname, email }),
     })
     const data = await res.json()
+
     if (res.ok && data.need_verify) {
-      setMessage("Пожалуйста, Подтвердите свою личность через email.")
+      setMessage("Регистрация прошла. Проверьте почту и подтвердите email.")
     } else if (!res.ok) {
       setMessage("Ошибка регистрации: " + data.error)
     }
@@ -110,7 +117,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
             {message && (
               <p
                 className={`text-sm ${
-                  message.startsWith("Пожалуйста")
+                  message.startsWith("Регистрация") || message.startsWith("Мы отправили")
                     ? "text-green-600"
                     : "text-red-500"
                 }`}
@@ -118,7 +125,6 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
                 {message}
               </p>
             )}
-
 
             <div className="flex gap-2 pt-4">
               <Button className="flex-1" onClick={handleLogin}>
