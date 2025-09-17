@@ -22,4 +22,7 @@ export async function POST(req: Request) {
   }), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
 
   return NextResponse.json({ id: row.id, nickname: row.nickname, email: row.email });
+  
+
+
 }

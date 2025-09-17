@@ -5,6 +5,8 @@ import * as schema from "./schema"; // импортируешь index.ts, где
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+    ssl: true, // <— важно для Neon
+
 });
 
 export const db = drizzle(pool, { schema }); // теперь db.query.<table> будет работать
