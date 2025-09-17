@@ -1,44 +1,25 @@
-// src/app/api/auth/login/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { db } from "@/db/client";
-import { usersTable } from "@/db/schema";
+import { users } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { nickname, email } = body;
+export async function POST(req: Request) {
+  const { nickname, email } = await req.json();
 
-    if (!nickname || !email) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-    }
-
-    // ищем пользователя по nickname и email
-    const user = await db.query.usersTable.findFirst({
-      where: and(
-        eq(usersTable.nickname, nickname),
-        eq(usersTable.email, email)
-      ),
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const responseData = {
-      nickname: user.nickname,
-      email: user.email,
-    };
-    // ответ с установкой cookie
-    const res = NextResponse.json(responseData, { status: 200 });
-    res.cookies.set("uid", String(user.id), {
-      httpOnly: true,
-      path: "/",
-    });
-
-    return res;
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  if (!nickname || !email) {
+    return NextResponse.json({ error: "nickname и email обязательны" }, { status: 400 });
   }
+
+  const row = await db.query.users.findFirst({
+    where: and(eq(users.nickname, nickname), eq(users.email, email)),
+  });
+
+  if (!row) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+
+  (await cookies()).set("session", JSON.stringify({
+    id: row.id, nickname: row.nickname, email: row.email,
+  }), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+
+  return NextResponse.json({ id: row.id, nickname: row.nickname, email: row.email });
 }

@@ -1,34 +1,40 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { db } from "@/db/client";
-import { usersTable } from "@/db/schema";
+import { users } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { nickname, email, birthday } = body;
+export async function POST(req: Request) {
+  const { nickname, email, birthday } = await req.json();
 
-    if (!nickname || !email) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-    }
-
-    const [user] = await db
-      .insert(usersTable)
-      .values({
-        nickname,
-        email,
-        ...(birthday ? { birthday } : {}), // добавить только если есть
-      })
-      .returning();
-
-    const res = NextResponse.json(user, { status: 201 });
-    res.cookies.set("uid", String(user.id), {
-      httpOnly: true,
-      path: "/",
-    });
-
-    return res;
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  if (!nickname || !email) {
+    return NextResponse.json({ error: "nickname и email обязательны" }, { status: 400 });
   }
+
+  // email уникален; дополнительно не позволяем дубли по паре nickname+email
+  const exists = await db.query.users.findFirst({
+    where: and(eq(users.email, email), eq(users.nickname, nickname)),
+  });
+
+  if (exists) {
+    // логиним, если такой уже есть
+    (await cookies()).set("session", JSON.stringify({
+      id: exists.id, nickname: exists.nickname, email: exists.email,
+    }), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    return NextResponse.json({ id: exists.id, nickname: exists.nickname, email: exists.email });
+  }
+
+  // создаём нового
+  const [row] = await db.insert(users)
+    .values({ nickname, email, birthday: birthday ?? null })
+    .returning();
+
+  (await cookies()).set("session", JSON.stringify({
+    id: row.id, nickname: row.nickname, email: row.email,
+  }), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+
+  return NextResponse.json(
+    { id: row.id, nickname: row.nickname, email: row.email, birthday: row.birthday },
+    { status: 201 },
+  );
 }
