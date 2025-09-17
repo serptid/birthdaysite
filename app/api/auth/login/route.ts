@@ -1,36 +1,37 @@
+// app/api/auth/login/route.ts
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { loginTokens } from "@/db/schema/loginTokens";
+import { and, eq, lt } from "drizzle-orm";
+import { randomUUID } from "crypto";
+import { addMinutes } from "date-fns";
+import { sendLoginEmail } from "@/lib/mail";
 
 export async function POST(req: Request) {
   let { nickname, email } = await req.json();
-
-  if (!nickname || !email) {
-    return NextResponse.json({ error: "nickname и email обязательны" }, { status: 400 });
-  }
-
-  // тот же формат ника, что и при регистрации
+  if (!nickname || !email) return NextResponse.json({ error: "nickname и email обязательны" }, { status: 400 });
   nickname = nickname.trim().toUpperCase();
 
   const user = await db.query.users.findFirst({
     where: and(eq(users.email, email), eq(users.nickname, nickname)),
   });
+  if (!user) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+  if (!user.isVerified) return NextResponse.json({ error: "email_not_verified" }, { status: 403 });
 
-  if (!user) {
-    return NextResponse.json({ error: "user_not_found" }, { status: 404 });
-  }
+  // очистим старые просроченные
+  await db.delete(loginTokens).where(lt(loginTokens.expiresAt, new Date()));
 
-  if (!user.isVerified) {
-    return NextResponse.json({ error: "email_not_verified" }, { status: 403 });
-  }
+  // создаём одноразовую ссылку на вход
+  const token = randomUUID();
+  await db.insert(loginTokens).values({
+    userId: user.id,
+    token,
+    expiresAt: addMinutes(new Date(), 15),
+  });
 
-  (await cookies()).set(
-    "session",
-    JSON.stringify({ id: user.id, nickname: user.nickname, email: user.email }),
-    { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 }
-  );
+  const loginUrl = `${process.env.APP_URL}/api/auth/magic-login?token=${token}`;
+  try { await sendLoginEmail(email, loginUrl); } catch {}
 
-  return NextResponse.json({ id: user.id, nickname: user.nickname, email: user.email });
+  return NextResponse.json({ need_magic: true }); // фронт показывает сообщение «Проверьте почту»
 }

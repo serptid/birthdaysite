@@ -1,12 +1,13 @@
+// lib/mail.ts
 import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
-export async function sendVerifyEmail(to: string, url: string) {
+export async function sendLoginEmail(to: string, url: string) {
   await resend.emails.send({
-    from: process.env.MAIL_FROM!,      // для теста: onboarding@resend.dev
+    from: `BDsite <${process.env.MAIL_FROM!}>`,
     to,
-    subject: "Подтверждение email",
-    text: `Подтвердите email: ${url}`,
-    html: `<p>Подтвердите email: <a href="${url}">${url}</a></p>`,
+    subject: "Вход по ссылке — BDsite",
+    text: `Перейдите для входа: ${url} (15 минут)`,
+    html: `<p>Для входа нажмите:</p><p><a href="${url}">Войти в BDsite</a></p><p>Ссылка действует 15 минут.</p>`,
   });
 }
