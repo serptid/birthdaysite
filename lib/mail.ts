@@ -2,7 +2,7 @@
 import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
-function baseEmailHTML(opts: {
+export function baseEmailHTML(opts: {
   title: string;
   description: string;
   buttonText: string;

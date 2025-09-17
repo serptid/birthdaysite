@@ -15,6 +15,20 @@
       "when": 1758075778738,
       "tag": "0001_noisy_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1758152345620,
+      "tag": "0002_plain_paper_doll",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1758152539627,
+      "tag": "0003_modern_hex",
+      "breakpoints": true
     }
   ]
 }
