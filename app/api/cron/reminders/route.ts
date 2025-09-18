@@ -10,8 +10,13 @@ import { todayInTZ, addDaysUTC, mmdd, parseISO, pad2 } from "@/lib/when";
 import { sendReminderEmail } from "@/lib/reminderEmail";
 
 function authOk(req: Request) {
-  const hdr = process.env.CRON_SECRET;
-  return hdr && req.headers.get("authorization") === `Bearer ${hdr}`;
+  // 1) ручные вызовы с токеном
+  const okBearer =
+    process.env.CRON_SECRET &&
+    req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
+  // 2) вызовы от Vercel Cron (официальный заголовок)
+  const okVercel = req.headers.get("x-vercel-cron") === "1";
+  return okBearer || okVercel;
 }
 
 export async function GET(req: Request) {
