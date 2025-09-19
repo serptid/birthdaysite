@@ -41,7 +41,6 @@ export default function BirthdayModal({
     return `${y}-${m}-${d}`
   }, [selectedDay, year])
 
-  // загрузка списка людей на выбранную дату
   async function loadPeople() {
     if (!isoDate) return
     setLoadingList(true)
@@ -49,11 +48,8 @@ export default function BirthdayModal({
       const r = await fetch(`/api/people?date=${isoDate}`, { cache: "no-store" })
       const data = await r.json()
       setPeople(Array.isArray(data) ? data : [])
-    } catch {
-      setPeople([])
-    } finally {
-      setLoadingList(false)
-    }
+    } catch { setPeople([]) }
+    finally { setLoadingList(false) }
   }
 
   useEffect(() => {
@@ -69,6 +65,11 @@ export default function BirthdayModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), date: isoDate, note: note.trim() || null }),
       })
+      if (res.status === 401) {
+        alert("Чтобы добавлять даты, сначала войдите или зарегистрируйтесь.")
+        onClose()
+        return
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         alert(data?.error || "save_failed")
@@ -77,26 +78,26 @@ export default function BirthdayModal({
       setName("")
       setNote("")
       await loadPeople()
-    } catch {
-      alert("network_error")
-    } finally {
-      setPending(false)
-    }
+    } catch { alert("network_error") }
+    finally { setPending(false) }
   }
 
   async function handleDelete(id: number) {
     if (!confirm("Удалить запись?")) return
     try {
       const r = await fetch(`/api/people?id=${id}`, { method: "DELETE" })
+      if (r.status === 401) {
+        alert("Требуется вход для удаления записей.")
+        onClose()
+        return
+      }
       if (!r.ok) {
         const data = await r.json().catch(() => ({}))
         alert(data?.error || "delete_failed")
         return
       }
       await loadPeople()
-    } catch {
-      alert("network_error")
-    }
+    } catch { alert("network_error") }
   }
 
   return (
@@ -110,7 +111,7 @@ export default function BirthdayModal({
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Левая колонка: форма добавления */}
+          {/* Форма */}
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">Имя</Label>
@@ -145,7 +146,7 @@ export default function BirthdayModal({
             </div>
           </div>
 
-          {/* Правая колонка: список людей */}
+          {/* Список людей на дату */}
           <div className="space-y-2">
             <div className="text-sm font-medium">Люди на эту дату</div>
             <div className="rounded border p-2 max-h-72 overflow-auto">
@@ -163,11 +164,7 @@ export default function BirthdayModal({
                           <div className="text-xs text-muted-foreground truncate">{p.note}</div>
                         )}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDelete(p.id)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => handleDelete(p.id)}>
                         Удалить
                       </Button>
                     </li>
