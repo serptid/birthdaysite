@@ -1,5 +1,5 @@
 // lib/reminderEmail.ts
-import { baseEmailHTML } from "@/lib/mail";
+import { baseEmailHTML } from "@/lib/baseEmailHTML";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
