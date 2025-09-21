@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
+
 interface Birthday {
   name: string
   date: string // "YYYY-MM-DD"
@@ -13,6 +15,29 @@ interface MonthGridProps {
 }
 
 export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthGridProps) {
+  const [tick, setTick] = useState(() => Date.now())
+
+  // обновляем раз в минуту, чтобы метка «сегодня» менялась в реальном времени
+  useEffect(() => {
+    const id = setInterval(() => setTick(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // вычисляем «сегодня по МСК» на каждом тике
+  const { todayYear, todayMonth, todayDay } = useMemo(() => {
+    const parts = new Intl.DateTimeFormat("ru-RU", {
+      timeZone: "Europe/Moscow",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date(tick))
+    return {
+      todayYear: Number(parts.find(p => p.type === "year")?.value),
+      todayMonth: Number(parts.find(p => p.type === "month")?.value) - 1,
+      todayDay: Number(parts.find(p => p.type === "day")?.value),
+    }
+  }, [tick])
+
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
@@ -22,18 +47,6 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
       return m - 1 === m_ && d === d_
     })
   }
-
-  // Сегодня по МСК
-  const parts = new Intl.DateTimeFormat("ru-RU", {
-    timeZone: "Europe/Moscow",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date())
-
-  const todayYear = Number(parts.find((p) => p.type === "year")?.value)
-  const todayMonth = Number(parts.find((p) => p.type === "month")?.value) - 1
-  const todayDay = Number(parts.find((p) => p.type === "day")?.value)
 
   return (
     <div className="grid grid-cols-11 gap-1 max-w-2xl mx-auto">
