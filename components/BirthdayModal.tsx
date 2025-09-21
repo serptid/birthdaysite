@@ -48,8 +48,11 @@ export default function BirthdayModal({
       const r = await fetch(`/api/people?date=${isoDate}`, { cache: "no-store" })
       const data = await r.json()
       setPeople(Array.isArray(data) ? data : [])
-    } catch { setPeople([]) }
-    finally { setLoadingList(false) }
+    } catch {
+      setPeople([])
+    } finally {
+      setLoadingList(false)
+    }
   }
 
   useEffect(() => {
@@ -78,8 +81,11 @@ export default function BirthdayModal({
       setName("")
       setNote("")
       await loadPeople()
-    } catch { alert("network_error") }
-    finally { setPending(false) }
+    } catch {
+      alert("network_error")
+    } finally {
+      setPending(false)
+    }
   }
 
   async function handleDelete(id: number) {
@@ -97,7 +103,9 @@ export default function BirthdayModal({
         return
       }
       await loadPeople()
-    } catch { alert("network_error") }
+    } catch {
+      alert("network_error")
+    }
   }
 
   return (
@@ -131,7 +139,9 @@ export default function BirthdayModal({
                 onChange={(e) => setNote(e.target.value)}
               />
             </div>
-            <div className="text-sm text-muted-foreground">Дата: {isoDate ?? "—"}</div>
+            <div className="text-sm text-muted-foreground">
+              Дата: {selectedDay ? `${selectedDay.day} ${MONTHS[selectedDay.month]}` : "—"}
+            </div>
             <div className="flex gap-2 pt-2">
               <Button
                 className="flex-1"
