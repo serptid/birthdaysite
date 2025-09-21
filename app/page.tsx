@@ -81,8 +81,8 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {MONTHS.map((monthName, monthIndex) => {
             const byMonth = birthdays.filter((b) => {
-              const { y, m0 } = parseDate(b.date)
-              return y === currentYear && m0 === monthIndex
+              const { m0 } = parseDate(b.date)
+              return m0 === monthIndex
             })
             return (
               <Card key={monthIndex} className="p-4">

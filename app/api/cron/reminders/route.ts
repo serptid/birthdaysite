@@ -47,14 +47,17 @@ export async function GET(req: Request) {
       columns: { id: true, name: true, date: true, note: true },
     });
 
-    const byMMDD = (iso: string) => {
-      const { m, d } = parseISO(iso);
+    function byMMDDAnnual(iso: string, targetY: number) {
+      let { m, d } = parseISO(iso);
+      // если дата 29.02, а год targetY невисокосный — считаем 28.02
+      const leap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+      if (m === 2 && d === 29 && !leap(targetY)) d = 28;
       return `${pad2(m)}-${pad2(d)}`;
-    };
+    }
 
-    const D0 = people.filter(p => p.date && byMMDD(p.date) === todayMMDD);
-    const D1 = people.filter(p => p.date && byMMDD(p.date) === tomorrowMMDD);
-    const D7 = people.filter(p => p.date && byMMDD(p.date) === weekMMDD);
+    const D0 = people.filter(p => p.date && byMMDDAnnual(p.date, t.y) === todayMMDD);
+    const D1 = people.filter(p => p.date && byMMDDAnnual(p.date, z.y) === tomorrowMMDD);
+    const D7 = people.filter(p => p.date && byMMDDAnnual(p.date, s.y) === weekMMDD);
 
     if (D0.length + D1.length + D7.length === 0) continue;
 

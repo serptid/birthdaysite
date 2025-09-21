@@ -141,7 +141,7 @@ export default function BirthdayModal({
                 {pending ? "Сохранение..." : "Сохранить"}
               </Button>
               <Button variant="outline" onClick={onClose} disabled={pending}>
-                Отмена
+                Готово
               </Button>
             </div>
           </div>

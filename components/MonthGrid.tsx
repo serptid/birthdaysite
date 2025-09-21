@@ -16,10 +16,10 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
-  function hasBirthdays(y_: number, m_: number, d_: number) {
+  function hasBirthdays(_y: number, m_: number, d_: number) {
     return birthdays.some((b) => {
-      const [y, m, d] = b.date.split("-").map(Number)
-      return y === y_ && m - 1 === m_ && d === d_
+      const [, m, d] = b.date.split("-").map(Number)
+      return m - 1 === m_ && d === d_
     })
   }
 
@@ -47,16 +47,15 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
         const withBirthday = "bg-green-500 text-white border-green-700 shadow-sm"
         const todayCls = isToday ? "border-2 border-indigo-300" : ""
 
-        const names =
-          hasBirthday
-            ? birthdays
-                .filter((b) => {
-                  const [y, m, d] = b.date.split("-").map(Number)
-                  return y === year && m - 1 === month && d === day
-                })
-                .map((b) => b.name)
-                .join(", ")
-            : `${day} число`
+        const names = hasBirthday
+          ? birthdays
+              .filter((b) => {
+                const [, m, d] = b.date.split("-").map(Number)
+                return m - 1 === month && d === day
+              })
+              .map((b) => b.name)
+              .join(", ")
+          : `${day} число`
 
         return (
           <div
