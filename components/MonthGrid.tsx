@@ -87,7 +87,7 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
         const isToday = year === todayYear && month === todayMonth && day === todayDay
 
         const base =
-          "relative w-6 h-6 rounded-sm border flex items-center justify-center text-xs font-medium transition-all duration-200 hover:scale-110 cursor-pointer group"
+          "relative w-6 h-6 rounded-sm border flex items-center justify-center text-xs font-extrabold transition-all duration-200 hover:scale-110 cursor-pointer group"
         const normal = "bg-muted text-muted-foreground border-border hover:bg-muted/80"
         const withBirthday = "bg-green-500 text-[var(--color-background)] border-green-700 shadow-sm"
         const todayCls = isToday ? "ring-2 ring-indigo-400 border-2 border-indigo-500 bg-indigo-100 text-indigo-800 shadow-md animate-pulse" : ""
@@ -116,7 +116,7 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
                 className="
                   pointer-events-none invisible group-hover:visible
                   absolute bottom-full left-1/2 -translate-x-1/2
-                  mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg
+                  mb-2 px-2 py-1 bg-gray-900 text-white text-xs font-normal rounded shadow-lg
                   transition-opacity duration-200 whitespace-nowrap z-10
                 "
               >

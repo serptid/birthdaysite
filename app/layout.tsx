@@ -1,10 +1,16 @@
 // app/layout.tsx
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
+
+const RobotoMono = Roboto_Mono({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-roboto-mono",
+  weight: ["400", "500", "700"],
+  display: "swap",
+})
 import Script from "next/script"
 import "./globals.css"
 
@@ -98,7 +104,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru" className="dark">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className={`font-mono font-bold ${RobotoMono.variable}`}>
         {/* JSON-LD Schema.org */}
         <Script
           id="ld-website"
