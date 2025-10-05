@@ -19,8 +19,40 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
 
   // обновляем раз в минуту, чтобы метка «сегодня» менялась в реальном времени
   useEffect(() => {
-    const id = setInterval(() => setTick(Date.now()), 60_000)
-    return () => clearInterval(id)
+    // Точно переключаем «сегодня» по полуночи МСК
+    const parts = (date: Date) =>
+      new Intl.DateTimeFormat("ru-RU", {
+        timeZone: "Europe/Moscow",
+        hour12: false,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).formatToParts(date)
+
+    const nowParts = parts(new Date())
+    const h = Number(nowParts.find((p) => p.type === "hour")?.value)
+    const m = Number(nowParts.find((p) => p.type === "minute")?.value)
+    const s = Number(nowParts.find((p) => p.type === "second")?.value)
+
+    // миллисекунды до следующей полуночи по МСК
+    let msUntilMidnight = ((24 - h) * 3600 - m * 60 - s) * 1000
+    if (msUntilMidnight <= 0) msUntilMidnight = 1000 // защита от граничных случаев
+
+    let dailyId: ReturnType<typeof setInterval> | null = null
+
+    const midnightId = setTimeout(() => {
+      setTick(Date.now())
+      // затем обновляем раз в сутки
+      dailyId = setInterval(() => setTick(Date.now()), 24 * 60 * 60 * 1000)
+    }, msUntilMidnight)
+
+    return () => {
+      clearTimeout(midnightId)
+      if (dailyId) clearInterval(dailyId)
+    }
   }, [])
 
   // вычисляем «сегодня по МСК» на каждом тике
@@ -49,7 +81,7 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
   }
 
   return (
-    <div className="grid grid-cols-11 gap-1 max-w-2xl mx-auto">
+    <div className="grid grid-cols-11 gap-1 w-full">
       {days.map((day) => {
         const hasBirthday = hasBirthdays(year, month, day)
         const isToday = year === todayYear && month === todayMonth && day === todayDay
@@ -58,7 +90,7 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
           "relative w-6 h-6 rounded-sm border flex items-center justify-center text-xs font-medium transition-all duration-200 hover:scale-110 cursor-pointer group"
         const normal = "bg-muted text-muted-foreground border-border hover:bg-muted/80"
         const withBirthday = "bg-green-500 text-white border-green-700 shadow-sm"
-        const todayCls = isToday ? "border-2 border-indigo-300" : ""
+        const todayCls = isToday ? "ring-2 ring-indigo-400 border-2 border-indigo-500 bg-indigo-100 text-indigo-800 shadow-md animate-pulse" : ""
 
         const names = hasBirthday
           ? birthdays
