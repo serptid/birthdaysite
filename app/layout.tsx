@@ -73,14 +73,7 @@ export const metadata: Metadata = {
       "Добавляй людей и заметки, получай напоминания по email. Удобная сетка по месяцам.",
     images: ["/og/cover.png"],
   },
-  icons: {
-    icon: [
-      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
-    ],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    shortcut: ["/favicon.ico"],
-  },
+
   manifest: "/site.webmanifest", // TODO: добавь manifest
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
