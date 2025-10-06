@@ -17,31 +17,19 @@ interface MonthGridProps {
 export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthGridProps) {
   const [tick, setTick] = useState(() => Date.now())
 
-  // обновляем раз в минуту, чтобы метка «сегодня» менялась в реальном времени
+  // Обновляем метку «сегодня» по локальной полуночи пользователя
   useEffect(() => {
-    // Точно переключаем «сегодня» по полуночи МСК
-    const parts = (date: Date) =>
-      new Intl.DateTimeFormat("ru-RU", {
-        timeZone: "Europe/Moscow",
-        hour12: false,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }).formatToParts(date)
-
-    const nowParts = parts(new Date())
-    const h = Number(nowParts.find((p) => p.type === "hour")?.value)
-    const m = Number(nowParts.find((p) => p.type === "minute")?.value)
-    const s = Number(nowParts.find((p) => p.type === "second")?.value)
-
-    // миллисекунды до следующей полуночи по МСК
-    let msUntilMidnight = ((24 - h) * 3600 - m * 60 - s) * 1000
-    if (msUntilMidnight <= 0) msUntilMidnight = 1000 // защита от граничных случаев
-
+    // Переключаем «сегодня» по локальному времени пользователя
     let dailyId: ReturnType<typeof setInterval> | null = null
+
+    const now = new Date()
+    const nextMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1
+    )
+    let msUntilMidnight = nextMidnight.getTime() - now.getTime()
+    if (msUntilMidnight <= 0) msUntilMidnight = 1000
 
     const midnightId = setTimeout(() => {
       setTick(Date.now())
@@ -55,18 +43,13 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
     }
   }, [])
 
-  // вычисляем «сегодня по МСК» на каждом тике
+  // Вычисляем «сегодня» по локальному времени пользователя
   const { todayYear, todayMonth, todayDay } = useMemo(() => {
-    const parts = new Intl.DateTimeFormat("ru-RU", {
-      timeZone: "Europe/Moscow",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(new Date(tick))
+    const now = new Date(tick)
     return {
-      todayYear: Number(parts.find(p => p.type === "year")?.value),
-      todayMonth: Number(parts.find(p => p.type === "month")?.value) - 1,
-      todayDay: Number(parts.find(p => p.type === "day")?.value),
+      todayYear: now.getFullYear(),
+      todayMonth: now.getMonth(),
+      todayDay: now.getDate(),
     }
   }, [tick])
 
