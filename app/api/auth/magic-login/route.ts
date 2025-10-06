@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
   // ставим сессию
   (await cookies()).set(
     "session",
-    JSON.stringify({ id: user.id, nickname: user.nickname, email: user.email }),
+    JSON.stringify({ id: user.id, email: user.email }),
     {
       httpOnly: true,
       sameSite: "lax",

@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
   const usrs = await db.query.users.findMany({
     where: eq(users.isVerified, true),
-    columns: { id: true, email: true, nickname: true, timezone: true },
+    columns: { id: true, email: true, timezone: true },
   });
 
   let processed = 0, mailed = 0;
@@ -76,7 +76,7 @@ export async function GET(req: Request) {
     .filter(p => p.name && p.date) // выкинем пустые
     .map(p => ({ name: p.name as string, date: p.date as string, note: p.note ?? null }))
 
-    await sendReminderEmail(u.email, u.nickname, {
+    await sendReminderEmail(u.email, {
       D0: toMail(D0),
       D1: toMail(D1),
       D7: toMail(D7),

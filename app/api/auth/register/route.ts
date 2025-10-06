@@ -10,25 +10,16 @@ import { addMinutes } from "date-fns";
 import { sendVerifyEmail } from "@/lib/mail"; // см. ранее
 
 export async function POST(req: Request) {
-  let { nickname, email, birthday } = await req.json();
+  let { email, birthday } = await req.json();
 
-  if (!nickname || !email) {
-    return NextResponse.json({ error: "nickname и email обязательны" }, { status: 400 });
+  if (!email) {
+    return NextResponse.json({ error: "email обязателен" }, { status: 400 });
   }
-
-  // единый формат ника
-  nickname = nickname.trim().toUpperCase();
 
   const existing = await db.query.users.findFirst({ where: eq(users.email, email) });
 
   // email уже в базе
   if (existing) {
-    // другой ник на тот же email
-    if (existing.nickname !== nickname) {
-      return NextResponse.json({ error: "email уже занят другим ником" }, { status: 409 });
-    }
-
-    // тот же ник
     if (existing.isVerified) {
       // зарегистрирован и подтверждён
       return NextResponse.json({ ok: true, already_verified: true });
@@ -52,7 +43,7 @@ export async function POST(req: Request) {
 
   // нового создаём как не верифицированного
   const [row] = await db.insert(users)
-    .values({ nickname, email, birthday: birthday ?? null })
+    .values({ email, birthday: birthday ?? null })
     .returning();
 
   const token = randomUUID();

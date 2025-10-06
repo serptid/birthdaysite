@@ -13,12 +13,10 @@ interface AccountModalProps {
 
 interface SessionUser {
   id: number
-  nickname: string
   email: string
 }
 
 export default function AccountModal({ open, onClose }: AccountModalProps) {
-  const [nickname, setNickname] = useState("")
   const [email, setEmail] = useState("")
   const [user, setUser] = useState<SessionUser | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -44,7 +42,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
       const res = await fetch("/api/auth/magic-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname, email }),
+        body: JSON.stringify({ email }),
       })
       const data = await res.json()
 
@@ -85,16 +83,6 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
         {!user ? (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="username">Имя пользователя</Label>
-              <Input
-                id="username"
-                placeholder="Ваше имя"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                disabled={pending}
-              />
-            </div>
-            <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -123,7 +111,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
               <Button
                 className="flex-1"
                 onClick={handleMagic}
-                disabled={pending || !nickname || !email}
+                disabled={pending || !email}
               >
                 {pending ? "Подождите..." : "Вход / Регистрация"}
               </Button>
@@ -135,7 +123,7 @@ export default function AccountModal({ open, onClose }: AccountModalProps) {
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-foreground">
-              Вы вошли как <strong>{user.nickname}</strong> ({user.email})
+              Вы вошли как <strong>{user.email}</strong>
             </p>
             <div className="flex gap-2 pt-4">
               <Button className="flex-1" onClick={handleLogout} variant="destructive" disabled={pending}>

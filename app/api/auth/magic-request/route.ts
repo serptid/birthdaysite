@@ -11,13 +11,12 @@ import { sendVerifyEmail, sendLoginEmail } from "@/lib/mail";
 
 export async function POST(req: Request) {
   try {
-    let { nickname, email } = await req.json();
-    if (!nickname || !email) {
-      return NextResponse.json({ error: "nickname и email обязательны" }, { status: 400 });
+    let { email } = await req.json();
+    if (!email) {
+      return NextResponse.json({ error: "email обязателен" }, { status: 400 });
     }
-    nickname = nickname.trim().toUpperCase();
 
-    // ищем пользователя по email (ник используем как отображаемое имя при создании)
+    // ищем пользователя по email
     const existing = await db.query.users.findFirst({ where: eq(users.email, email) });
 
     // 1) есть и верифицирован → отправляем магссылку на вход
@@ -50,7 +49,7 @@ export async function POST(req: Request) {
 
     // 3) нет пользователя → создаём и шлём подтверждение (сразу войдёт после клика)
     const [row] = await db.insert(users)
-      .values({ nickname, email, birthday: null }) // isVerified=false по умолчанию
+      .values({ email, birthday: null }) // isVerified=false по умолчанию
       .returning();
 
     const token = randomUUID();

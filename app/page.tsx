@@ -9,7 +9,7 @@ import AccountModal from "@/components/AccountModal"
 import { MONTHS } from "@/constants/months"
 import { User } from "lucide-react"
 
-interface SessionUser { id: number; nickname: string; email: string }
+interface SessionUser { id: number; email: string }
 interface Birthday { id: number; userId: number; name: string; date: string; note?: string | null }
 
 export default function HomePage() {
@@ -71,7 +71,7 @@ export default function HomePage() {
               className="flex items-center gap-2"
             >
               <User className="w-4 h-4" />
-              {user ? user.nickname : "Войти"}
+              {user ? user.email : "Войти"}
             </Button>
           </div>
         </div>

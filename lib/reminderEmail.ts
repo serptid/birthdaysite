@@ -8,7 +8,6 @@ type Item = { name: string; date: string; note?: string | null };
 
 export async function sendReminderEmail(
   to: string,
-  nickname: string,
   groups: { D7: Item[]; D1: Item[]; D0: Item[] }
 ) {
   const has = (k: "D7" | "D1" | "D0") => groups[k] && groups[k].length > 0;
@@ -24,7 +23,7 @@ export async function sendReminderEmail(
   if (parts.length === 0) return;
 
   const html = baseEmailHTML({
-    title: `Напоминания для ${nickname}`,
+    title: `Напоминания BDsite`,
     description: `Ближайшие дни рождения.`,
     buttonText: "Открыть BDsite",
     url: process.env.APP_URL!,

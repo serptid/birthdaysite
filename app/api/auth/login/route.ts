@@ -12,14 +12,12 @@ import { sendLoginEmail } from "@/lib/mail";
 
 export async function POST(req: Request) {
   try {
-    let { nickname, email } = await req.json();
-    if (!nickname || !email)
-      return NextResponse.json({ error: "nickname и email обязательны" }, { status: 400 });
-
-    nickname = nickname.trim().toUpperCase();
+    let { email } = await req.json();
+    if (!email)
+      return NextResponse.json({ error: "email обязателен" }, { status: 400 });
 
     const user = await db.query.users.findFirst({
-      where: and(eq(users.email, email), eq(users.nickname, nickname)),
+      where: eq(users.email, email),
     });
     if (!user) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
     if (!user.isVerified) return NextResponse.json({ error: "email_not_verified" }, { status: 403 });
