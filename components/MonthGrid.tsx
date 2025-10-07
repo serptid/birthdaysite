@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 
+import { todayInTZ } from "@/lib/when"
+
 interface Birthday {
   name: string
   date: string // "YYYY-MM-DD"
@@ -45,11 +47,12 @@ export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthG
 
   // Вычисляем «сегодня» по локальному времени пользователя
   const { todayYear, todayMonth, todayDay } = useMemo(() => {
-    const now = new Date(tick)
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const t = todayInTZ(tz)
     return {
-      todayYear: now.getFullYear(),
-      todayMonth: now.getMonth(),
-      todayDay: now.getDate(),
+      todayYear: t.y,
+      todayMonth: t.m,
+      todayDay: t.d,
     }
   }, [tick])
 
