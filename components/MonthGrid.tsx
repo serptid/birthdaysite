@@ -17,44 +17,12 @@ interface MonthGridProps {
 }
 
 export default function MonthGrid({ year, month, birthdays, onDayClick }: MonthGridProps) {
-  const [tick, setTick] = useState(() => Date.now())
-
-  // Обновляем метку «сегодня» по локальной полуночи пользователя
-  useEffect(() => {
-    // Переключаем «сегодня» по локальному времени пользователя
-    let dailyId: ReturnType<typeof setInterval> | null = null
-
-    const now = new Date()
-    const nextMidnight = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1
-    )
-    let msUntilMidnight = nextMidnight.getTime() - now.getTime()
-    if (msUntilMidnight <= 0) msUntilMidnight = 1000
-
-    const midnightId = setTimeout(() => {
-      setTick(Date.now())
-      // затем обновляем раз в сутки
-      dailyId = setInterval(() => setTick(Date.now()), 24 * 60 * 60 * 1000)
-    }, msUntilMidnight)
-
-    return () => {
-      clearTimeout(midnightId)
-      if (dailyId) clearInterval(dailyId)
-    }
-  }, [])
-
-  // Вычисляем «сегодня» по локальному времени пользователя
-  const { todayYear, todayMonth, todayDay } = useMemo(() => {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-    const t = todayInTZ(tz)
-    return {
-      todayYear: t.y,
-      todayMonth: t.m,
-      todayDay: t.d,
-    }
-  }, [tick])
+  // Вычисляем «сегодня» при каждом рендере (по локальной таймзоне пользователя)
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const t = todayInTZ(tz)
+  const todayYear = t.y
+  const todayMonth = t.m - 1 // 0-based month для сравнения с пропсом month
+  const todayDay = t.d
 
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
