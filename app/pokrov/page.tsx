@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CalendarDays, UserPlus } from "lucide-react"
+import { CalendarDays, PanelRightOpen, UserCog, UserPlus } from "lucide-react"
 import AccountModal from "@/components/AccountModal"
 import MonthGrid from "@/components/MonthGrid"
 import PokrovBirthdayModal from "@/components/PokrovBirthdayModal"
@@ -63,6 +63,10 @@ const REMINDER_DAY_OPTIONS = [
   { value: 7, label: "За неделю" },
 ] as const
 
+type ReminderPanelPlacement = "page" | "profile"
+
+const REMINDER_PANEL_PLACEMENT_KEY = "pokrov-reminders-placement"
+
 function getBirthdayMonth(birthday: SharedBirthdaySummary) {
   if (birthday.birthMonth) return birthday.birthMonth - 1
   if (!birthday.date) return null
@@ -85,6 +89,7 @@ export default function PokrovPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [reminderDays, setReminderDays] = useState<number[]>([0, 1, 7])
   const [reminderHour, setReminderHour] = useState(6)
+  const [reminderPanelPlacement, setReminderPanelPlacement] = useState<ReminderPanelPlacement>("page")
   const {
     calendarTheme,
     themeSaving,
@@ -123,8 +128,20 @@ export default function PokrovPage() {
   }
 
   useEffect(() => {
+    const savedPlacement = window.localStorage.getItem(REMINDER_PANEL_PLACEMENT_KEY)
+    if (savedPlacement === "page" || savedPlacement === "profile") {
+      setReminderPanelPlacement(savedPlacement)
+    }
+  }, [])
+
+  useEffect(() => {
     loadPokrov()
   }, [])
+
+  function changeReminderPanelPlacement(nextPlacement: ReminderPanelPlacement) {
+    setReminderPanelPlacement(nextPlacement)
+    window.localStorage.setItem(REMINDER_PANEL_PLACEMENT_KEY, nextPlacement)
+  }
 
   function handleDayClick(month: number, day: number) {
     if (loading && !data) return
@@ -173,6 +190,46 @@ export default function PokrovPage() {
   const birthdays = data?.birthdays ?? []
   const showAccessPrompt = !loading && !data
   const settingsDisabled = savingSettings || !data
+  const reminderSettingsPanel = (placement: ReminderPanelPlacement) => (
+    <ReminderSettingsPanel
+      timezone={timezone}
+      reminderHour={reminderHour}
+      notificationsEnabled={notificationsEnabled}
+      reminderDays={reminderDays}
+      disabled={settingsDisabled}
+      saving={savingSettings}
+      status={message}
+      dayOptions={[...REMINDER_DAY_OPTIONS]}
+      headerAction={
+        placement === "page" ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => changeReminderPanelPlacement("profile")}
+          >
+            <UserCog className="size-4" />
+            В профиль
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => changeReminderPanelPlacement("page")}
+          >
+            <PanelRightOpen className="size-4" />
+            На экран
+          </Button>
+        )
+      }
+      onTimezoneChange={setTimezone}
+      onReminderHourChange={setReminderHour}
+      onNotificationsEnabledChange={setNotificationsEnabled}
+      onReminderDaysChange={setReminderDays}
+      onSave={handleSaveSettings}
+    />
+  )
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -225,8 +282,8 @@ export default function PokrovPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-            <section className="space-y-4">
+          <div className={reminderPanelPlacement === "page" ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]" : "grid gap-4"}>
+            <section className={reminderPanelPlacement === "page" ? "space-y-4" : "mx-auto w-full max-w-full space-y-4 xl:max-w-[calc(100%_-_24rem_-_1rem)]"}>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {MONTHS.map((monthName, monthIndex) => {
                   const byMonth = birthdays.filter((birthday) => getBirthdayMonth(birthday) === monthIndex)
@@ -249,23 +306,11 @@ export default function PokrovPage() {
               </div>
             </section>
 
-            <aside className="space-y-4">
-              <ReminderSettingsPanel
-                timezone={timezone}
-                reminderHour={reminderHour}
-                notificationsEnabled={notificationsEnabled}
-                reminderDays={reminderDays}
-                disabled={settingsDisabled}
-                saving={savingSettings}
-                status={message}
-                dayOptions={[...REMINDER_DAY_OPTIONS]}
-                onTimezoneChange={setTimezone}
-                onReminderHourChange={setReminderHour}
-                onNotificationsEnabledChange={setNotificationsEnabled}
-                onReminderDaysChange={setReminderDays}
-                onSave={handleSaveSettings}
-              />
-            </aside>
+            {reminderPanelPlacement === "page" && (
+              <aside className="space-y-4">
+                {reminderSettingsPanel("page")}
+              </aside>
+            )}
           </div>
         )}
       </main>
@@ -285,7 +330,10 @@ export default function PokrovPage() {
         onClose={handleAccountClose}
         initialUser={data?.user ?? null}
         authLoading={loading}
-        passwordOnly
+        passwordOnly={reminderPanelPlacement === "page"}
+        onRemindersMoveToProfile={() => changeReminderPanelPlacement("profile")}
+        onRemindersMoveToPage={() => changeReminderPanelPlacement("page")}
+        reminderSettingsPanel={reminderSettingsPanel("profile")}
       />
     </div>
   )

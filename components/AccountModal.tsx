@@ -1,18 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { RUSSIAN_TIMEZONES, formatRussianTimeZoneLabel } from "@/constants/timezones"
+import { PanelRightOpen, UserCog } from "lucide-react"
+import ReminderSettingsPanel from "@/components/ReminderSettingsPanel"
 
 interface AccountModalProps {
   open: boolean
@@ -20,6 +14,9 @@ interface AccountModalProps {
   initialUser?: SessionUser | null
   authLoading?: boolean
   passwordOnly?: boolean
+  onRemindersMoveToProfile?: () => void
+  onRemindersMoveToPage?: () => void
+  reminderSettingsPanel?: ReactNode
 }
 
 interface SessionUser {
@@ -35,72 +32,27 @@ interface SessionUser {
 type AuthMode = "login" | "register" | "magic"
 type Message = { type: "success" | "error"; text: string }
 
-const REMINDER_HOURS = Array.from({ length: 24 }, (_, hour) => hour)
-
-function formatHour(hour: number) {
-  return hour.toString().padStart(2, "0")
-}
+const REMINDER_DAY_OPTIONS = [
+  { value: 0, label: "В день" },
+  { value: 1, label: "За день" },
+  { value: 7, label: "За неделю" },
+] as const
 
 function currentAuthRedirect() {
   if (typeof window === "undefined") return "/"
   return window.location.pathname || "/"
 }
 
-function HourDial({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: number
-  onChange: (hour: number) => void
-  disabled?: boolean
-}) {
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <div
-        className="relative size-52 rounded-full border bg-muted/20 shadow-inner"
-        aria-label="Выбор часа отправки"
-        role="group"
-      >
-        <div className="absolute left-1/2 top-1/2 flex size-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border bg-background shadow-sm">
-          <div className="text-2xl font-semibold tabular-nums">{formatHour(value)}:00</div>
-        </div>
-
-        {REMINDER_HOURS.map((hour) => {
-          const angle = (hour / 24) * Math.PI * 2 - Math.PI / 2
-          const radius = 83
-          const isSelected = hour === value
-
-          return (
-            <button
-              key={hour}
-              type="button"
-              aria-pressed={isSelected}
-              aria-label={`Выбрать ${formatHour(hour)}:00`}
-              disabled={disabled}
-              onClick={() => onChange(hour)}
-              className={[
-                "absolute flex size-7 items-center justify-center rounded-full text-xs font-medium tabular-nums transition",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                disabled ? "cursor-not-allowed opacity-50" : "hover:bg-accent hover:text-accent-foreground",
-                isSelected ? "bg-primary text-primary-foreground shadow-sm" : "bg-background text-foreground",
-              ].join(" ")}
-              style={{
-                left: `calc(50% + ${Math.cos(angle) * radius}px)`,
-                top: `calc(50% + ${Math.sin(angle) * radius}px)`,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              {formatHour(hour)}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-export default function AccountModal({ open, onClose, initialUser, authLoading = false, passwordOnly = false }: AccountModalProps) {
+export default function AccountModal({
+  open,
+  onClose,
+  initialUser,
+  authLoading = false,
+  passwordOnly = false,
+  onRemindersMoveToProfile,
+  onRemindersMoveToPage,
+  reminderSettingsPanel,
+}: AccountModalProps) {
   const [mode, setMode] = useState<AuthMode>("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -204,17 +156,6 @@ export default function AccountModal({ open, onClose, initialUser, authLoading =
     } finally {
       setPending(false)
     }
-  }
-
-  function toggleReminderDay(day: number) {
-    setSettingsReminderDays((current) => {
-      if (current.includes(day)) {
-        const next = current.filter((item) => item !== day)
-        return next.length ? next : current
-      }
-
-      return [...current, day].sort((a, b) => a - b)
-    })
   }
 
   async function handleSaveSettings() {
@@ -496,69 +437,52 @@ export default function AccountModal({ open, onClose, initialUser, authLoading =
               </div>
             )}
 
+            {passwordOnly && onRemindersMoveToProfile && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onRemindersMoveToProfile}
+                  disabled={controlsDisabled}
+                >
+                  <UserCog className="size-4" />
+                  Напоминания в профиль
+                </Button>
+              </div>
+            )}
+
             <div className={passwordOnly ? "grid gap-4" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)]"}>
               {!passwordOnly && (
-              <div className="space-y-3 rounded border p-3">
-                <div className="text-sm font-medium">Настройки уведомлений</div>
-                <div className="grid gap-4 xl:grid-cols-[minmax(18rem,1fr)_auto]">
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="timezone">Таймзона</Label>
-                      <Select value={settingsTimezone} onValueChange={setSettingsTimezone} disabled={controlsDisabled}>
-                        <SelectTrigger id="timezone" className="w-full">
-                          <SelectValue placeholder="Выберите город" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {RUSSIAN_TIMEZONES.map((item) => (
-                            <SelectItem key={item.timeZone} value={item.timeZone}>
-                              {formatRussianTimeZoneLabel(item.city, item.timeZone)}
-                            </SelectItem>
-                          ))}
-                          {!RUSSIAN_TIMEZONES.some((item) => item.timeZone === settingsTimezone) && settingsTimezone && (
-                            <SelectItem value={settingsTimezone}>{settingsTimezone}</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={settingsNotificationsEnabled}
-                        onChange={(e) => setSettingsNotificationsEnabled(e.target.checked)}
-                        disabled={controlsDisabled}
-                      />
-                      Email-напоминания включены
-                    </label>
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">Напоминать за</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[0, 1, 3, 7].map((day) => (
-                          <label key={day} className="flex items-center gap-2 rounded border px-2 py-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={settingsReminderDays.includes(day)}
-                              onChange={() => toggleReminderDay(day)}
-                              disabled={controlsDisabled}
-                            />
-                            {day === 0 ? "Сегодня" : `${day} дн.`}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <Button onClick={handleSaveSettings} disabled={controlsDisabled || !settingsTimezone.trim()}>
-                      Сохранить настройки
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Час отправки</Label>
-                    <HourDial
-                      value={settingsReminderHour}
-                      onChange={setSettingsReminderHour}
-                      disabled={controlsDisabled}
-                    />
-                  </div>
-                </div>
-              </div>
+                reminderSettingsPanel ?? (
+                  <ReminderSettingsPanel
+                    timezone={settingsTimezone}
+                    reminderHour={settingsReminderHour}
+                    notificationsEnabled={settingsNotificationsEnabled}
+                    reminderDays={settingsReminderDays}
+                    disabled={controlsDisabled}
+                    saving={pending}
+                    dayOptions={[...REMINDER_DAY_OPTIONS]}
+                    headerAction={
+                      onRemindersMoveToPage ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={onRemindersMoveToPage}
+                          disabled={controlsDisabled}
+                        >
+                          <PanelRightOpen className="size-4" />
+                          На экран
+                        </Button>
+                      ) : null
+                    }
+                    onTimezoneChange={setSettingsTimezone}
+                    onReminderHourChange={setSettingsReminderHour}
+                    onNotificationsEnabledChange={setSettingsNotificationsEnabled}
+                    onReminderDaysChange={setSettingsReminderDays}
+                    onSave={handleSaveSettings}
+                  />
+                )
               )}
 
               <div className="space-y-3 rounded border p-3">

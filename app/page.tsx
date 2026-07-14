@@ -12,7 +12,7 @@ import CountUp from "@/components/CountUp"
 import { MONTHS } from "@/constants/months"
 import type { CalendarTheme } from "@/lib/calendar-theme"
 import { useCalendarThemeSettings } from "@/hooks/useCalendarThemeSettings"
-import { User } from "lucide-react"
+import { User, UserCog } from "lucide-react"
 
 interface SessionUser {
   id: number
@@ -41,6 +41,10 @@ const REMINDER_DAY_OPTIONS = [
   { value: 7, label: "За неделю" },
 ] as const
 
+type ReminderPanelPlacement = "page" | "profile"
+
+const REMINDER_PANEL_PLACEMENT_KEY = "birthday-reminders-placement"
+
 export default function HomePage() {
   const currentYear = new Date().getFullYear()
   const [showBirthdayModal, setShowBirthdayModal] = useState(false)
@@ -53,6 +57,7 @@ export default function HomePage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [reminderDays, setReminderDays] = useState<number[]>([0, 1, 7])
   const [reminderHour, setReminderHour] = useState(6)
+  const [reminderPanelPlacement, setReminderPanelPlacement] = useState<ReminderPanelPlacement>("page")
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsStatus, setSettingsStatus] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const {
@@ -89,6 +94,18 @@ export default function HomePage() {
     setSelectedDay({ month, day })
     setShowBirthdayModal(true)
   }
+
+  function changeReminderPanelPlacement(nextPlacement: ReminderPanelPlacement) {
+    setReminderPanelPlacement(nextPlacement)
+    window.localStorage.setItem(REMINDER_PANEL_PLACEMENT_KEY, nextPlacement)
+  }
+
+  useEffect(() => {
+    const savedPlacement = window.localStorage.getItem(REMINDER_PANEL_PLACEMENT_KEY)
+    if (savedPlacement === "page" || savedPlacement === "profile") {
+      setReminderPanelPlacement(savedPlacement)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -179,7 +196,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-background">
-        <div className="lg:px-45 container mx-auto px-3 py-4">
+        <div className="container mx-auto px-3 py-4">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-2xl font-bold text-foreground">
               Birthday Calendar{" "}
@@ -212,9 +229,9 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="container mx-auto lg:px-45 py-4">
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <section className="space-y-4">
+      <main className="container mx-auto px-3 py-4">
+        <div className={reminderPanelPlacement === "page" ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]" : "grid gap-4"}>
+          <section className={reminderPanelPlacement === "page" ? "space-y-4" : "mx-auto w-full max-w-full space-y-4 xl:max-w-[calc(100%_-_24rem_-_1rem)]"}>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {MONTHS.map((monthName, monthIndex) => {
                 const byMonth = birthdays.filter((b) => {
@@ -238,23 +255,36 @@ export default function HomePage() {
             </div>
           </section>
 
-          <aside>
-            <ReminderSettingsPanel
-              timezone={timezone}
-              reminderHour={reminderHour}
-              notificationsEnabled={notificationsEnabled}
-              reminderDays={reminderDays}
-              disabled={savingSettings || !user}
-              saving={savingSettings}
-              status={settingsStatus}
-              dayOptions={[...REMINDER_DAY_OPTIONS]}
-              onTimezoneChange={setTimezone}
-              onReminderHourChange={setReminderHour}
-              onNotificationsEnabledChange={setNotificationsEnabled}
-              onReminderDaysChange={setReminderDays}
-              onSave={handleSaveSettings}
-            />
-          </aside>
+          {reminderPanelPlacement === "page" && (
+            <aside>
+              <ReminderSettingsPanel
+                timezone={timezone}
+                reminderHour={reminderHour}
+                notificationsEnabled={notificationsEnabled}
+                reminderDays={reminderDays}
+                disabled={savingSettings || !user}
+                saving={savingSettings}
+                status={settingsStatus}
+                dayOptions={[...REMINDER_DAY_OPTIONS]}
+                headerAction={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => changeReminderPanelPlacement("profile")}
+                  >
+                    <UserCog className="size-4" />
+                    В профиль
+                  </Button>
+                }
+                onTimezoneChange={setTimezone}
+                onReminderHourChange={setReminderHour}
+                onNotificationsEnabledChange={setNotificationsEnabled}
+                onReminderDaysChange={setReminderDays}
+                onSave={handleSaveSettings}
+              />
+            </aside>
+          )}
         </div>
       </main>
 
@@ -270,7 +300,9 @@ export default function HomePage() {
         onClose={() => setShowAccountModal(false)}
         initialUser={user}
         authLoading={authLoading}
-        passwordOnly
+        passwordOnly={reminderPanelPlacement === "page"}
+        onRemindersMoveToProfile={() => changeReminderPanelPlacement("profile")}
+        onRemindersMoveToPage={() => changeReminderPanelPlacement("page")}
       />
     </div>
   )

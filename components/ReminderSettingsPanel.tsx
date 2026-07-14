@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -28,6 +29,7 @@ interface ReminderSettingsPanelProps {
   saving?: boolean
   status?: ReminderStatus
   dayOptions: ReminderDayOption[]
+  headerAction?: ReactNode
   onTimezoneChange: (timezone: string) => void
   onReminderHourChange: (hour: number) => void
   onNotificationsEnabledChange: (enabled: boolean) => void
@@ -50,6 +52,7 @@ export default function ReminderSettingsPanel({
   saving,
   status,
   dayOptions,
+  headerAction,
   onTimezoneChange,
   onReminderHourChange,
   onNotificationsEnabledChange,
@@ -67,9 +70,12 @@ export default function ReminderSettingsPanel({
   return (
     <div className="space-y-4">
       <div className="rounded-md border p-3">
-        <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-          <Bell className="size-4" />
-          Напоминания
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Bell className="size-4" />
+            Напоминания
+          </div>
+          {headerAction}
         </div>
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-sm">
