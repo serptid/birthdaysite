@@ -8,11 +8,11 @@ export type CalendarTheme = {
 
 export type CalendarThemeKey = keyof CalendarTheme;
 
-const LEGACY_DEFAULT_DAY_TEXT = "#a3a3a3";
+const LEGACY_DEFAULT_DAY_TEXTS = ["#a1a1a1", "#a3a3a3"] as const;
 
 export const DEFAULT_CALENDAR_THEME: CalendarTheme = {
   background: "#0a0a0a",
-  dayText: "#a1a1a1",
+  dayText: "#f5f5f5",
   todayBorder: "#f5f5f5",
   birthdayBackground: "#00c950",
   birthdayText: "#0a0a0a",
@@ -251,10 +251,12 @@ function calendarThemesEqual(a: CalendarTheme, b: CalendarTheme) {
 }
 
 function isLegacyDefaultTheme(theme: CalendarTheme) {
-  return calendarThemesEqual(theme, {
-    ...DEFAULT_CALENDAR_THEME,
-    dayText: LEGACY_DEFAULT_DAY_TEXT,
-  });
+  return LEGACY_DEFAULT_DAY_TEXTS.some((dayText) =>
+    calendarThemesEqual(theme, {
+      ...DEFAULT_CALENDAR_THEME,
+      dayText,
+    })
+  );
 }
 
 export function getCalendarThemePresetId(theme: CalendarTheme) {

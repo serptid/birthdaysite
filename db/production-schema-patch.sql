@@ -7,7 +7,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone text DEFAULT 'Europe/Moscow'
 ALTER TABLE users ADD COLUMN IF NOT EXISTS notifications_enabled boolean DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_days text DEFAULT '0,1,7';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_hour integer DEFAULT 6;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_theme text DEFAULT '{"background":"#0a0a0a","dayText":"#a1a1a1","todayBorder":"#f5f5f5","birthdayBackground":"#00c950","birthdayText":"#0a0a0a"}';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS calendar_theme text DEFAULT '{"background":"#0a0a0a","dayText":"#f5f5f5","todayBorder":"#f5f5f5","birthdayBackground":"#00c950","birthdayText":"#0a0a0a"}';
 
 UPDATE users SET is_verified = false WHERE is_verified IS NULL;
 UPDATE users SET timezone = 'Europe/Moscow' WHERE timezone IS NULL;
@@ -15,8 +15,15 @@ UPDATE users SET notifications_enabled = true WHERE notifications_enabled IS NUL
 UPDATE users SET reminder_days = '0,1,7' WHERE reminder_days IS NULL;
 UPDATE users SET reminder_hour = 6 WHERE reminder_hour IS NULL;
 UPDATE users
-SET calendar_theme = '{"background":"#0a0a0a","dayText":"#a1a1a1","todayBorder":"#f5f5f5","birthdayBackground":"#00c950","birthdayText":"#0a0a0a"}'
+SET calendar_theme = '{"background":"#0a0a0a","dayText":"#f5f5f5","todayBorder":"#f5f5f5","birthdayBackground":"#00c950","birthdayText":"#0a0a0a"}'
 WHERE calendar_theme IS NULL;
+
+UPDATE users
+SET calendar_theme = '{"background":"#0a0a0a","dayText":"#f5f5f5","todayBorder":"#f5f5f5","birthdayBackground":"#00c950","birthdayText":"#0a0a0a"}'
+WHERE calendar_theme IN (
+  '{"background":"#0a0a0a","dayText":"#a1a1a1","todayBorder":"#f5f5f5","birthdayBackground":"#00c950","birthdayText":"#0a0a0a"}',
+  '{"background":"#0a0a0a","dayText":"#a3a3a3","todayBorder":"#f5f5f5","birthdayBackground":"#00c950","birthdayText":"#0a0a0a"}'
+);
 
 ALTER TABLE users ALTER COLUMN is_verified SET NOT NULL;
 ALTER TABLE users ALTER COLUMN timezone SET NOT NULL;
