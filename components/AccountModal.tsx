@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PanelRightOpen, UserCog } from "lucide-react"
-import ReminderSettingsPanel from "@/components/ReminderSettingsPanel"
+import { UserCog } from "lucide-react"
 
 interface AccountModalProps {
   open: boolean
@@ -15,7 +14,6 @@ interface AccountModalProps {
   authLoading?: boolean
   passwordOnly?: boolean
   onRemindersMoveToProfile?: () => void
-  onRemindersMoveToPage?: () => void
   reminderSettingsPanel?: ReactNode
 }
 
@@ -32,12 +30,6 @@ interface SessionUser {
 type AuthMode = "login" | "register" | "magic"
 type Message = { type: "success" | "error"; text: string }
 
-const REMINDER_DAY_OPTIONS = [
-  { value: 0, label: "В день" },
-  { value: 1, label: "За день" },
-  { value: 7, label: "За неделю" },
-] as const
-
 function currentAuthRedirect() {
   if (typeof window === "undefined") return "/"
   return window.location.pathname || "/"
@@ -50,7 +42,6 @@ export default function AccountModal({
   authLoading = false,
   passwordOnly = false,
   onRemindersMoveToProfile,
-  onRemindersMoveToPage,
   reminderSettingsPanel,
 }: AccountModalProps) {
   const [mode, setMode] = useState<AuthMode>("login")
@@ -60,19 +51,11 @@ export default function AccountModal({
   const [message, setMessage] = useState<Message | null>(null)
   const [pending, setPending] = useState(false)
   const [checkingAccount, setCheckingAccount] = useState(false)
-  const [settingsTimezone, setSettingsTimezone] = useState("Europe/Moscow")
-  const [settingsNotificationsEnabled, setSettingsNotificationsEnabled] = useState(true)
-  const [settingsReminderDays, setSettingsReminderDays] = useState<number[]>([0, 1, 7])
-  const [settingsReminderHour, setSettingsReminderHour] = useState(6)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
 
   function applyAccount(nextUser: SessionUser) {
     setUser(nextUser)
-    setSettingsTimezone(nextUser.timezone ?? "Europe/Moscow")
-    setSettingsNotificationsEnabled(nextUser.notificationsEnabled ?? true)
-    setSettingsReminderDays(nextUser.reminderDays?.length ? nextUser.reminderDays : [0, 1, 7])
-    setSettingsReminderHour(nextUser.reminderHour ?? 6)
   }
 
   useEffect(() => {
@@ -150,35 +133,6 @@ export default function AccountModal({
         setMessage({ type: "error", text: "Слишком много запросов. Попробуйте позже." })
       } else {
         setMessage({ type: "error", text: "Ошибка: " + (data.error ?? "unknown") })
-      }
-    } catch {
-      setMessage({ type: "error", text: "Ошибка сети" })
-    } finally {
-      setPending(false)
-    }
-  }
-
-  async function handleSaveSettings() {
-    setMessage(null)
-    setPending(true)
-    try {
-      const res = await fetch("/api/account", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          timezone: settingsTimezone.trim(),
-          notificationsEnabled: settingsNotificationsEnabled,
-          reminderDays: settingsReminderDays,
-          reminderHour: settingsReminderHour,
-        }),
-      })
-      const data = await res.json()
-
-      if (res.ok && data.user) {
-        setUser(data.user)
-        setMessage({ type: "success", text: "Настройки сохранены." })
-      } else {
-        setMessage({ type: "error", text: "Не удалось сохранить настройки." })
       }
     } catch {
       setMessage({ type: "error", text: "Ошибка сети" })
@@ -451,39 +405,8 @@ export default function AccountModal({
               </div>
             )}
 
-            <div className={passwordOnly ? "grid gap-4" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)]"}>
-              {!passwordOnly && (
-                reminderSettingsPanel ?? (
-                  <ReminderSettingsPanel
-                    timezone={settingsTimezone}
-                    reminderHour={settingsReminderHour}
-                    notificationsEnabled={settingsNotificationsEnabled}
-                    reminderDays={settingsReminderDays}
-                    disabled={controlsDisabled}
-                    saving={pending}
-                    dayOptions={[...REMINDER_DAY_OPTIONS]}
-                    headerAction={
-                      onRemindersMoveToPage ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={onRemindersMoveToPage}
-                          disabled={controlsDisabled}
-                        >
-                          <PanelRightOpen className="size-4" />
-                          На экран
-                        </Button>
-                      ) : null
-                    }
-                    onTimezoneChange={setSettingsTimezone}
-                    onReminderHourChange={setSettingsReminderHour}
-                    onNotificationsEnabledChange={setSettingsNotificationsEnabled}
-                    onReminderDaysChange={setSettingsReminderDays}
-                    onSave={handleSaveSettings}
-                  />
-                )
-              )}
+            <div className={!passwordOnly && reminderSettingsPanel ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)]" : "grid gap-4"}>
+              {!passwordOnly && reminderSettingsPanel}
 
               <div className="space-y-3 rounded border p-3">
                 <div className="text-sm font-medium">{visibleUser.hasPassword ? "Смена пароля" : "Задать пароль"}</div>

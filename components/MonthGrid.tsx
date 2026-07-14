@@ -23,35 +23,19 @@ interface MonthGridProps {
 type Today = { y: number; m: number; d: number }
 
 function getTodayInTZ(tz: string): Today {
-  // Формируем дату через локализованную строку, чтобы учесть TZ без двусмысленностей
-  const s = new Date().toLocaleString("en-CA", {
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour12: false,
-  })
-  // en-CA даёт "YYYY-MM-DD, HH:MM:SS" или "YYYY-MM-DD"
-  const [ymd] = s.split(",")
-  const [y, m, d] = ymd.split("-").map(Number)
-  return { y, m, d }
-}
+  }).formatToParts(new Date())
 
-function msUntilNextMidnight(tz: string): number {
-  const now = new Date()
-  const today = getTodayInTZ(tz)
-  // Берём следующую «полночь» в TZ, вычисляя через локализованный конструктор
-  const nextLocalDate = new Date(
-    `${today.y}-${String(today.m).padStart(2, "0")}-${String(today.d).padStart(2, "0")}T00:00:00`
-  ).getTime()
-  // Смещаем к следующему дню
-  // Добавляем сутки в миллисекундах
-  const oneDay = 24 * 60 * 60 * 1000
-  // Теперь переводим эту локальную «полночь» к реальному времени TZ через toLocale… трюк:
-  const next = new Date(nextLocalDate + oneDay)
-  // Безопасный вариант: ждать хотя бы 61 секунду после полуночи на случай DST
-  const diff = next.getTime() - now.getTime()
-  return Math.max(diff + 61 * 1000, 60 * 1000)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return {
+    y: Number(values.year),
+    m: Number(values.month),
+    d: Number(values.day),
+  }
 }
 
 export default function MonthGrid({ year, month, birthdays, theme = DEFAULT_CALENDAR_THEME, onDayClick }: MonthGridProps) {
@@ -59,31 +43,28 @@ export default function MonthGrid({ year, month, birthdays, theme = DEFAULT_CALE
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", [])
   const [today, setToday] = useState<Today>(() => getTodayInTZ(tz))
 
-  // Обновление в полночь по TZ + страховки
+  // Сверяем текущий день регулярно: это переживает сон вкладки и смену даты без перезагрузки.
   useEffect(() => {
-    setToday(getTodayInTZ(tz)) // первичная синхронизация
-
-    const toMidnight = setTimeout(() => {
-      setToday(getTodayInTZ(tz))
-      // после срабатывания ставим следующий таймер
-    }, msUntilNextMidnight(tz))
-
-    // Страховка: раз в 5 минут сверяемся (на случай сна вкладки/перехода лето/зима)
-    const heartbeat = setInterval(() => {
+    const syncToday = () => {
       const t = getTodayInTZ(tz)
       setToday(prev => (prev.y !== t.y || prev.m !== t.m || prev.d !== t.d ? t : prev))
-    }, 5 * 60 * 1000)
-
-    // Обновление при возврате во вкладку
-    const onVisibility = () => {
-      if (!document.hidden) setToday(getTodayInTZ(tz))
     }
+
+    syncToday()
+    const heartbeat = setInterval(syncToday, 60 * 1000)
+
+    const onVisibility = () => {
+      if (!document.hidden) syncToday()
+    }
+    const onFocus = () => syncToday()
+
     document.addEventListener("visibilitychange", onVisibility)
+    window.addEventListener("focus", onFocus)
 
     return () => {
-      clearTimeout(toMidnight)
       clearInterval(heartbeat)
       document.removeEventListener("visibilitychange", onVisibility)
+      window.removeEventListener("focus", onFocus)
     }
   }, [tz])
 

@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react"
 import { Bell } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -34,7 +33,6 @@ interface ReminderSettingsPanelProps {
   onReminderHourChange: (hour: number) => void
   onNotificationsEnabledChange: (enabled: boolean) => void
   onReminderDaysChange: (days: number[]) => void
-  onSave: () => void
 }
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
@@ -57,14 +55,15 @@ export default function ReminderSettingsPanel({
   onReminderHourChange,
   onNotificationsEnabledChange,
   onReminderDaysChange,
-  onSave,
 }: ReminderSettingsPanelProps) {
   function toggleReminderDay(day: number) {
-    onReminderDaysChange(
-      reminderDays.includes(day)
-        ? reminderDays.filter((item) => item !== day)
-        : [...reminderDays, day].sort((a, b) => a - b)
-    )
+    if (reminderDays.includes(day)) {
+      const nextDays = reminderDays.filter((item) => item !== day)
+      if (nextDays.length > 0) onReminderDaysChange(nextDays)
+      return
+    }
+
+    onReminderDaysChange([...reminderDays, day].sort((a, b) => a - b))
   }
 
   return (
@@ -141,9 +140,9 @@ export default function ReminderSettingsPanel({
             </Select>
           </div>
 
-          <Button className="w-full" variant="outline" onClick={onSave} disabled={disabled}>
-            {saving ? "Сохраняем..." : "Сохранить напоминания"}
-          </Button>
+          {saving && !status && (
+            <div className="text-sm text-muted-foreground">Сохраняем...</div>
+          )}
         </div>
       </div>
 

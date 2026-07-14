@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CalendarDays, PanelRightOpen, UserCog, UserPlus } from "lucide-react"
 import AccountModal from "@/components/AccountModal"
 import MonthGrid from "@/components/MonthGrid"
@@ -67,6 +67,22 @@ type ReminderPanelPlacement = "page" | "profile"
 
 const REMINDER_PANEL_PLACEMENT_KEY = "pokrov-reminders-placement"
 
+type ReminderSettingsSnapshot = {
+  timezone: string
+  notificationsEnabled: boolean
+  reminderDays: number[]
+  reminderHour: number
+}
+
+function reminderSettingsKey(settings: ReminderSettingsSnapshot) {
+  return JSON.stringify({
+    timezone: settings.timezone,
+    notificationsEnabled: settings.notificationsEnabled,
+    reminderDays: [...settings.reminderDays].sort((a, b) => a - b),
+    reminderHour: settings.reminderHour,
+  })
+}
+
 function getBirthdayMonth(birthday: SharedBirthdaySummary) {
   if (birthday.birthMonth) return birthday.birthMonth - 1
   if (!birthday.date) return null
@@ -90,6 +106,8 @@ export default function PokrovPage() {
   const [reminderDays, setReminderDays] = useState<number[]>([0, 1, 7])
   const [reminderHour, setReminderHour] = useState(6)
   const [reminderPanelPlacement, setReminderPanelPlacement] = useState<ReminderPanelPlacement>("page")
+  const lastSavedSettingsKey = useRef<string | null>(null)
+  const settingsSaveSeq = useRef(0)
   const {
     calendarTheme,
     themeSaving,
@@ -105,6 +123,12 @@ export default function PokrovPage() {
     setNotificationsEnabled(nextData.member.notificationsEnabled)
     setReminderDays(nextData.member.reminderDays.length ? nextData.member.reminderDays : [])
     setReminderHour(nextData.member.reminderHour)
+    lastSavedSettingsKey.current = reminderSettingsKey({
+      timezone: nextData.member.timezone,
+      notificationsEnabled: nextData.member.notificationsEnabled,
+      reminderDays: nextData.member.reminderDays.length ? nextData.member.reminderDays : [],
+      reminderHour: nextData.member.reminderHour,
+    })
   }
 
   async function loadPokrov(showLoader = true) {
@@ -113,6 +137,8 @@ export default function PokrovPage() {
       const res = await fetch("/api/shared/pokrov", { cache: "no-store" })
       if (res.status === 401) {
         setData(null)
+        lastSavedSettingsKey.current = null
+        setSavingSettings(false)
         return
       }
 
@@ -155,32 +181,53 @@ export default function PokrovPage() {
     setShowBirthdayModal(true)
   }
 
-  async function handleSaveSettings() {
+  useEffect(() => {
+    if (!data || loading) return
+
+    const settings = { timezone, notificationsEnabled, reminderDays, reminderHour }
+    const key = reminderSettingsKey(settings)
+    if (key === lastSavedSettingsKey.current) {
+      settingsSaveSeq.current++
+      setSavingSettings(false)
+      return
+    }
+
+    const saveSeq = ++settingsSaveSeq.current
     setSavingSettings(true)
     setMessage(null)
-    try {
-      const res = await fetch("/api/shared/pokrov/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          timezone,
-          notificationsEnabled,
-          reminderDays,
-          reminderHour,
-        }),
-      })
 
-      if (!res.ok) throw new Error("settings_failed")
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/shared/pokrov/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(settings),
+        })
 
-      const saved = await res.json()
-      setData((current) => current ? { ...current, member: saved.member } : current)
-      setMessage({ type: "success", text: "Настройки напоминаний сохранены." })
-    } catch {
-      setMessage({ type: "error", text: "Не удалось сохранить настройки." })
-    } finally {
-      setSavingSettings(false)
-    }
-  }
+        if (!res.ok) throw new Error("settings_failed")
+
+        const saved = await res.json()
+        if (saveSeq !== settingsSaveSeq.current) return
+
+        setData((current) => current ? { ...current, member: saved.member } : current)
+        lastSavedSettingsKey.current = reminderSettingsKey({
+          timezone: saved.member.timezone,
+          notificationsEnabled: saved.member.notificationsEnabled,
+          reminderDays: saved.member.reminderDays,
+          reminderHour: saved.member.reminderHour,
+        })
+        setMessage({ type: "success", text: "Сохранено." })
+      } catch {
+        if (saveSeq === settingsSaveSeq.current) {
+          setMessage({ type: "error", text: "Не удалось сохранить настройки." })
+        }
+      } finally {
+        if (saveSeq === settingsSaveSeq.current) setSavingSettings(false)
+      }
+    }, 600)
+
+    return () => clearTimeout(timer)
+  }, [data, loading, timezone, notificationsEnabled, reminderDays, reminderHour])
 
   function handleAccountClose() {
     setShowAccountModal(false)
@@ -189,7 +236,7 @@ export default function PokrovPage() {
 
   const birthdays = data?.birthdays ?? []
   const showAccessPrompt = !loading && !data
-  const settingsDisabled = savingSettings || !data
+  const settingsDisabled = !data
   const reminderSettingsPanel = (placement: ReminderPanelPlacement) => (
     <ReminderSettingsPanel
       timezone={timezone}
@@ -227,7 +274,6 @@ export default function PokrovPage() {
       onReminderHourChange={setReminderHour}
       onNotificationsEnabledChange={setNotificationsEnabled}
       onReminderDaysChange={setReminderDays}
-      onSave={handleSaveSettings}
     />
   )
 
@@ -332,7 +378,6 @@ export default function PokrovPage() {
         authLoading={loading}
         passwordOnly={reminderPanelPlacement === "page"}
         onRemindersMoveToProfile={() => changeReminderPanelPlacement("profile")}
-        onRemindersMoveToPage={() => changeReminderPanelPlacement("page")}
         reminderSettingsPanel={reminderSettingsPanel("profile")}
       />
     </div>
