@@ -40,3 +40,22 @@ export async function sendLoginEmail(to: string, url: string) {
     html,
   });
 }
+
+export async function sendPasswordResetEmail(to: string, url: string) {
+  const subject = "Восстановление пароля — BDsite";
+  const html = baseEmailHTML({
+    title: "Восстановление пароля",
+    description: "Нажмите кнопку ниже, чтобы задать новый пароль. Ссылка действует 30 минут и одноразовая.",
+    buttonText: "Задать новый пароль",
+    url,
+    note: "Если вы не запрашивали восстановление пароля, просто проигнорируйте это письмо.",
+  });
+
+  await resend.emails.send({
+    from: `BDsite <${process.env.MAIL_FROM!}>`,
+    to,
+    subject,
+    text: `Задайте новый пароль по ссылке: ${url}\nСсылка действует 30 минут.`,
+    html,
+  });
+}

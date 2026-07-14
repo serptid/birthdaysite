@@ -18,7 +18,7 @@ import "./globals.css"
 export const metadata: Metadata = {
   metadataBase: new URL("https://bdsite.ru"),
   title: {
-    default: "BDsite — календарь дней рождения",
+    default: "Календарь дней рождения",
     template: "%s | BDsite",
   },
   description:
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "/",
-    languages: { "ru": "/", "en": "/en" }, // при наличии /en
+    languages: { ru: "/" },
   },
   openGraph: {
     type: "website",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
       "Добавляй дни рождения близких, заметки и получай напоминания по email. Удобная сетка по месяцам.",
     images: [
       {
-        url: "/og/cover.png", // TODO: положи картинку 1200×630
+        url: "/og/cover.svg",
         width: 1200,
         height: 630,
         alt: "BDsite — календарь дней рождения",
@@ -72,31 +72,23 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@bdsite", // TODO: при наличии
-    creator: "@bdsite", // TODO
     title: "BDsite — календарь дней рождения",
     description:
       "Добавляй людей и заметки, получай напоминания по email. Удобная сетка по месяцам.",
-    images: ["/og/cover.png"],
+    images: ["/og/cover.svg"],
   },
 
-  manifest: "/site.webmanifest", // TODO: добавь manifest
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
-  ],
+  manifest: "/site.webmanifest",
   formatDetection: { telephone: false, email: false, address: false },
-  verification: {
-    // TODO: вставь коды, если нужно
-    google: "",
-    yandex: "",
-  },
 }
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0b0b0c",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
+  ],
 }
 
 export default function RootLayout({
@@ -115,11 +107,6 @@ export default function RootLayout({
               "@type": "WebSite",
               name: "BDsite",
               url: "https://bdsite.ru",
-              potentialAction: {
-                "@type": "SearchAction",
-                target: "https://bdsite.ru/?q={search_term_string}",
-                "query-input": "required name=search_term_string",
-              },
             }),
           }}
         />

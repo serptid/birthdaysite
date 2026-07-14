@@ -8,6 +8,9 @@ export const peopleTable = pgTable("people", {
   .notNull(),
   name: text("name"),
   date: date("date", { mode: "string" }), // "YYYY-MM-DD"
+  birthMonth: integer("birth_month"),
+  birthDay: integer("birth_day"),
+  birthYear: integer("birth_year"),
   note: text("note") 
   }
 );

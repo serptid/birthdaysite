@@ -5,20 +5,28 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 type Item = { name: string; date: string; note?: string | null };
+type ReminderGroup = { key: string; label: string; items: Item[] };
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 export async function sendReminderEmail(
   to: string,
-  groups: { D7: Item[]; D1: Item[]; D0: Item[] }
+  groups: ReminderGroup[]
 ) {
-  const has = (k: "D7" | "D1" | "D0") => groups[k] && groups[k].length > 0;
-
   const namesOnly = (arr: Item[]) =>
-    arr.map(x => `• ${x.name}${x.note ? ` (${x.note})` : ""}`).join("<br/>");
+    arr
+      .map((x) => `• ${escapeHtml(x.name)}${x.note ? ` (${escapeHtml(x.note)})` : ""}`)
+      .join("<br/>");
 
-  const parts: string[] = [];
-  if (has("D0")) parts.push(`<strong>Сегодня:</strong><br/>${namesOnly(groups.D0)}`);
-  if (has("D1")) parts.push(`<strong>Завтра:</strong><br/>${namesOnly(groups.D1)}`);
-  if (has("D7")) parts.push(`<strong>Через 7 дней:</strong><br/>${namesOnly(groups.D7)}`);
+  const activeGroups = groups.filter((group) => group.items.length > 0);
+  const parts = activeGroups.map((group) => `<strong>${escapeHtml(group.label)}:</strong><br/>${namesOnly(group.items)}`);
 
   if (parts.length === 0) return;
 
@@ -31,9 +39,7 @@ export async function sendReminderEmail(
   });
 
   const text = [
-    has("D0") ? `Сегодня: ${groups.D0.map(x => x.name).join(", ")}` : "",
-    has("D1") ? `Завтра: ${groups.D1.map(x => x.name).join(", ")}` : "",
-    has("D7") ? `Через 7 дней: ${groups.D7.map(x => x.name).join(", ")}` : "",
+    ...activeGroups.map((group) => `${group.label}: ${group.items.map(x => x.name).join(", ")}`),
   ].filter(Boolean).join("\n");
 
   await resend.emails.send({

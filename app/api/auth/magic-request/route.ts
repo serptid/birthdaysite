@@ -4,16 +4,49 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { users, emailVerifications, loginTokens } from "@/db/schema";
-import { eq, lt, and } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { eq, lt } from "drizzle-orm";
 import { addMinutes } from "date-fns";
 import { sendVerifyEmail, sendLoginEmail } from "@/lib/mail";
+import { createToken } from "@/lib/tokens";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { z } from "zod";
+import { normalizeAuthRedirect } from "@/lib/auth-redirect";
+
+const emailSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(255),
+  redirectTo: z.string().max(200).optional(),
+});
+
+function tokenUrl(path: string, token: string, redirectTo: string, fallbackUrl: string) {
+  const url = new URL(path, process.env.APP_URL || fallbackUrl);
+  url.searchParams.set("token", token);
+  url.searchParams.set("next", redirectTo);
+  return url.toString();
+}
+
+function genericSent() {
+  return NextResponse.json({ sent: "ok" });
+}
 
 export async function POST(req: Request) {
   try {
-    let { email } = await req.json();
-    if (!email) {
-      return NextResponse.json({ error: "email обязателен" }, { status: 400 });
+    const body = await req.json().catch(() => null);
+    const parsed = emailSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "invalid_email" }, { status: 400 });
+    }
+
+    const email = parsed.data.email;
+    const redirectTo = normalizeAuthRedirect(parsed.data.redirectTo);
+    const ip = getClientIp(req);
+    const byEmail = checkRateLimit(`magic:${ip}:${email}`, 5, 15 * 60 * 1000);
+    const byIp = checkRateLimit(`magic-ip:${ip}`, 30, 15 * 60 * 1000);
+
+    if (!byEmail.ok || !byIp.ok) {
+      return NextResponse.json(
+        { error: "rate_limited", retryAfter: Math.max(byEmail.retryAfter, byIp.retryAfter) },
+        { status: 429 }
+      );
     }
 
     // ищем пользователя по email
@@ -22,29 +55,29 @@ export async function POST(req: Request) {
     // 1) есть и верифицирован → отправляем магссылку на вход
     if (existing && existing.isVerified) {
       await db.delete(loginTokens).where(lt(loginTokens.expiresAt, new Date()));
-      const token = randomUUID();
+      const { token, tokenHash } = createToken();
       await db.insert(loginTokens).values({
         userId: existing.id,
-        token,
+        token: tokenHash,
         expiresAt: addMinutes(new Date(), 15),
       });
-      const loginUrl = `${process.env.APP_URL}/api/auth/magic-login?token=${token}`;
+      const loginUrl = tokenUrl("/api/auth/magic-login", token, redirectTo, req.url);
       await sendLoginEmail(email, loginUrl);
-      return NextResponse.json({ sent: "login" }); // фронт покажет: проверьте почту
+      return genericSent();
     }
 
     // 2) есть, но не верифицирован → высылаем подтверждение (которое сразу логинит)
     if (existing && !existing.isVerified) {
       await db.delete(emailVerifications).where(eq(emailVerifications.userId, existing.id));
-      const token = randomUUID();
+      const { token, tokenHash } = createToken();
       await db.insert(emailVerifications).values({
         userId: existing.id,
-        token,
+        token: tokenHash,
         expiresAt: addMinutes(new Date(), 30),
       });
-      const verifyUrl = `${process.env.APP_URL}/api/auth/verify?token=${token}`; // verify ставит сессию
+      const verifyUrl = tokenUrl("/api/auth/verify", token, redirectTo, req.url); // verify ставит сессию
       await sendVerifyEmail(email, verifyUrl);
-      return NextResponse.json({ sent: "verify" });
+      return genericSent();
     }
 
     // 3) нет пользователя → создаём и шлём подтверждение (сразу войдёт после клика)
@@ -52,15 +85,15 @@ export async function POST(req: Request) {
       .values({ email, birthday: null }) // isVerified=false по умолчанию
       .returning();
 
-    const token = randomUUID();
+    const { token, tokenHash } = createToken();
     await db.insert(emailVerifications).values({
       userId: row.id,
-      token,
+      token: tokenHash,
       expiresAt: addMinutes(new Date(), 30),
     });
-    const verifyUrl = `${process.env.APP_URL}/api/auth/verify?token=${token}`;
+    const verifyUrl = tokenUrl("/api/auth/verify", token, redirectTo, req.url);
     await sendVerifyEmail(email, verifyUrl);
-    return NextResponse.json({ sent: "verify" }, { status: 201 });
+    return genericSent();
   } catch (e) {
     console.error("MAGIC_REQUEST_ERROR", e);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });

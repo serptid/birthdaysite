@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "calendar_theme" text DEFAULT '{"dayText":"#a3a3a3","dayBorder":"#27272a","todayBorder":"#f5f5f5","birthdayBackground":"#00c950","birthdayText":"#0a0a0a","birthdayBorder":"#008236"}' NOT NULL;

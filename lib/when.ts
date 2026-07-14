@@ -5,6 +5,19 @@ export function todayInTZ(tz: string) {
   return { y: +p.year, m: +p.month, d: +p.day };
 }
 
+export function nowInTZ(tz: string) {
+  const fmt = new Intl.DateTimeFormat("ru-RU", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  });
+  const p = Object.fromEntries(fmt.formatToParts(new Date()).map(x => [x.type, x.value]));
+  return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour };
+}
+
 export function addDaysUTC(y: number, m: number, d: number, delta: number) {
   const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + delta);

@@ -4,41 +4,48 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { users, loginTokens } from "@/db/schema";
-import { and, eq, lt } from "drizzle-orm";
-import { randomUUID } from "crypto";
-import { addMinutes } from "date-fns";
-import { sendLoginEmail } from "@/lib/mail";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { setSessionCookie } from "@/lib/session";
+import { verifyPassword } from "@/lib/password";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(255),
+  password: z.string().min(8).max(128),
+});
 
 export async function POST(req: Request) {
   try {
-    let { email } = await req.json();
-    if (!email)
-      return NextResponse.json({ error: "email обязателен" }, { status: 400 });
+    const body = await req.json().catch(() => null);
+    const parsed = loginSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+    }
+
+    const { email, password } = parsed.data;
+    const ip = getClientIp(req);
+    const byEmail = checkRateLimit(`login:${ip}:${email}`, 5, 15 * 60 * 1000);
+    const byIp = checkRateLimit(`login-ip:${ip}`, 30, 15 * 60 * 1000);
+
+    if (!byEmail.ok || !byIp.ok) {
+      return NextResponse.json(
+        { error: "rate_limited", retryAfter: Math.max(byEmail.retryAfter, byIp.retryAfter) },
+        { status: 429 }
+      );
+    }
 
     const user = await db.query.users.findFirst({
       where: eq(users.email, email),
     });
-    if (!user) return NextResponse.json({ error: "user_not_found" }, { status: 404 });
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      return NextResponse.json({ error: "invalid_credentials" }, { status: 401 });
+    }
     if (!user.isVerified) return NextResponse.json({ error: "email_not_verified" }, { status: 403 });
 
-    // очистка просроченных токенов
-    await db.delete(loginTokens).where(lt(loginTokens.expiresAt, new Date()));
-
-    const token = randomUUID();
-    await db.insert(loginTokens).values({
-      userId: user.id,
-      token,
-      expiresAt: addMinutes(new Date(), 15),
-    });
-
-    const loginUrl = `${process.env.APP_URL}/api/auth/magic-login?token=${token}`;
-    try { await sendLoginEmail(email, loginUrl); } catch (e) {
-      console.error("sendLoginEmail failed", e);
-      return NextResponse.json({ error: "email_send_failed" }, { status: 500 });
-    }
-
-    return NextResponse.json({ need_magic: true });
+    await setSessionCookie({ id: user.id, email: user.email });
+    return NextResponse.json({ ok: true, user: { id: user.id, email: user.email } });
   } catch (e) {
     console.error("LOGIN_ROUTE_ERROR", e);
     return NextResponse.json({ error: "internal_error" }, { status: 500 });

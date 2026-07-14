@@ -2,55 +2,47 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { db } from "@/db/client";
 import { loginTokens, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { hashToken } from "@/lib/tokens";
+import { setSessionCookie } from "@/lib/session";
+import { authRedirectUrl, normalizeAuthRedirect } from "@/lib/auth-redirect";
 
-function home(url: string, q: string) {
-  const u = new URL("/", url);
-  u.search = q;
-  return u;
+function authRedirect(url: string, key: string, value: string, redirectTo: string) {
+  return authRedirectUrl(url, key, value, redirectTo);
 }
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
-  if (!token) return NextResponse.redirect(home(req.url, "?login=missing"));
+  const redirectTo = normalizeAuthRedirect(req.nextUrl.searchParams.get("next"));
+  if (!token || token.length > 256) {
+    return NextResponse.redirect(authRedirect(req.url, "login", "missing", redirectTo));
+  }
 
   // ищем токен
   const rec = await db.query.loginTokens.findFirst({
-    where: eq(loginTokens.token, token),
+    where: eq(loginTokens.token, hashToken(token)),
   });
 
   // токен не найден или просрочен
   if (!rec || rec.expiresAt < new Date()) {
     // попытка зачистить, если найден
     if (rec) await db.delete(loginTokens).where(eq(loginTokens.id, rec.id));
-    return NextResponse.redirect(home(req.url, "?login=expired"));
+    return NextResponse.redirect(authRedirect(req.url, "login", "expired", redirectTo));
   }
 
   // ищем пользователя
   const user = await db.query.users.findFirst({ where: eq(users.id, rec.userId) });
   if (!user) {
     await db.delete(loginTokens).where(eq(loginTokens.id, rec.id));
-    return NextResponse.redirect(home(req.url, "?login=notfound"));
+    return NextResponse.redirect(authRedirect(req.url, "login", "notfound", redirectTo));
   }
 
   // одноразовость
   await db.delete(loginTokens).where(eq(loginTokens.id, rec.id));
 
-  // ставим сессию
-  (await cookies()).set(
-    "session",
-    JSON.stringify({ id: user.id, email: user.email }),
-    {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-      secure: true, // прод
-    }
-  );
+  await setSessionCookie({ id: user.id, email: user.email });
 
-  return NextResponse.redirect(home(req.url, "?login=ok"));
+  return NextResponse.redirect(authRedirect(req.url, "login", "ok", redirectTo));
 }
