@@ -80,7 +80,6 @@ export async function GET(req: Request) {
       timezone: true,
       notificationsEnabled: true,
       reminderDays: true,
-      reminderHour: true,
     },
   });
 
@@ -93,7 +92,6 @@ export async function GET(req: Request) {
     if (!u.notificationsEnabled) continue;
 
     const t = nowInTZ(tz);
-    if (t.h !== u.reminderHour) continue;
 
     const reminderDays = parseReminderDays(u.reminderDays);
     if (reminderDays.length === 0) continue;
@@ -170,7 +168,6 @@ export async function GET(req: Request) {
       calendarId: sharedCalendarMembers.calendarId,
       userId: sharedCalendarMembers.userId,
       timezone: sharedCalendarMembers.timezone,
-      reminderHour: sharedCalendarMembers.reminderHour,
       reminderDays: sharedCalendarMembers.reminderDays,
       email: users.email,
       calendarName: sharedCalendars.name,
@@ -192,7 +189,6 @@ export async function GET(req: Request) {
 
     const tz = member.timezone || "Europe/Moscow";
     const t = nowInTZ(tz);
-    if (t.h !== member.reminderHour) continue;
 
     const sharedPeople = await db.query.sharedCalendarBirthdays.findMany({
       where: eq(sharedCalendarBirthdays.calendarId, member.calendarId),

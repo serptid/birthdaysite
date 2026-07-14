@@ -243,7 +243,6 @@ export default function HomePage() {
               timezone={timezone}
               notificationsEnabled={notificationsEnabled}
               reminderDays={reminderDays}
-              reminderHour={reminderHour}
               disabled={savingSettings || !user}
               saving={savingSettings}
               status={settingsStatus}
@@ -251,7 +250,6 @@ export default function HomePage() {
               onTimezoneChange={setTimezone}
               onNotificationsEnabledChange={setNotificationsEnabled}
               onReminderDaysChange={setReminderDays}
-              onReminderHourChange={setReminderHour}
               onSave={handleSaveSettings}
             />
           </aside>

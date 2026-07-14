@@ -254,7 +254,6 @@ export default function PokrovPage() {
                 timezone={timezone}
                 notificationsEnabled={notificationsEnabled}
                 reminderDays={reminderDays}
-                reminderHour={reminderHour}
                 disabled={settingsDisabled}
                 saving={savingSettings}
                 status={message}
@@ -262,7 +261,6 @@ export default function PokrovPage() {
                 onTimezoneChange={setTimezone}
                 onNotificationsEnabledChange={setNotificationsEnabled}
                 onReminderDaysChange={setReminderDays}
-                onReminderHourChange={setReminderHour}
                 onSave={handleSaveSettings}
               />
             </aside>
