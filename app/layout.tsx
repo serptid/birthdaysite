@@ -78,6 +78,9 @@ export const metadata: Metadata = {
     images: ["/og/cover.svg"],
   },
 
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
   manifest: "/site.webmanifest",
   formatDetection: { telephone: false, email: false, address: false },
 }
