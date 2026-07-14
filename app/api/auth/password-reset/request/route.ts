@@ -10,6 +10,7 @@ import { passwordResetTokens, users } from "@/db/schema";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { sendPasswordResetEmail } from "@/lib/mail";
 import { createToken } from "@/lib/tokens";
+import { authTokenUrl } from "@/lib/auth-redirect";
 
 const requestSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(255),
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
       expiresAt: addMinutes(new Date(), 30),
     });
 
-    const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
+    const resetUrl = authTokenUrl(req, "/reset-password", token);
     await sendPasswordResetEmail(user.email, resetUrl);
 
     return genericSent();

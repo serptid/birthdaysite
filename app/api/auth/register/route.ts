@@ -11,7 +11,7 @@ import { createToken } from "@/lib/tokens";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { hashPassword } from "@/lib/password";
 import { z } from "zod";
-import { normalizeAuthRedirect } from "@/lib/auth-redirect";
+import { authTokenUrl, normalizeAuthRedirect } from "@/lib/auth-redirect";
 
 const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(255),
@@ -19,13 +19,6 @@ const registerSchema = z.object({
   birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   redirectTo: z.string().max(200).optional(),
 });
-
-function tokenUrl(path: string, token: string, redirectTo: string, fallbackUrl: string) {
-  const url = new URL(path, process.env.APP_URL || fallbackUrl);
-  url.searchParams.set("token", token);
-  url.searchParams.set("next", redirectTo);
-  return url.toString();
-}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -67,7 +60,7 @@ export async function POST(req: Request) {
       expiresAt: addMinutes(new Date(), 30),
     });
 
-    const verifyUrl = tokenUrl("/api/auth/verify", token, redirectTo, req.url);
+    const verifyUrl = authTokenUrl(req, "/api/auth/verify", token, redirectTo);
     try { await sendVerifyEmail(email, verifyUrl); } catch {}
 
     // важно: куки НЕ ставим до подтверждения
@@ -87,7 +80,7 @@ export async function POST(req: Request) {
     expiresAt: addMinutes(new Date(), 30),
   });
 
-  const verifyUrl = tokenUrl("/api/auth/verify", token, redirectTo, req.url);
+  const verifyUrl = authTokenUrl(req, "/api/auth/verify", token, redirectTo);
   try { await sendVerifyEmail(email, verifyUrl); } catch {}
 
   // важно: куки НЕ ставим

@@ -10,19 +10,12 @@ import { sendVerifyEmail, sendLoginEmail } from "@/lib/mail";
 import { createToken } from "@/lib/tokens";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { z } from "zod";
-import { normalizeAuthRedirect } from "@/lib/auth-redirect";
+import { authTokenUrl, normalizeAuthRedirect } from "@/lib/auth-redirect";
 
 const emailSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(255),
   redirectTo: z.string().max(200).optional(),
 });
-
-function tokenUrl(path: string, token: string, redirectTo: string, fallbackUrl: string) {
-  const url = new URL(path, process.env.APP_URL || fallbackUrl);
-  url.searchParams.set("token", token);
-  url.searchParams.set("next", redirectTo);
-  return url.toString();
-}
 
 function genericSent() {
   return NextResponse.json({ sent: "ok" });
@@ -61,7 +54,7 @@ export async function POST(req: Request) {
         token: tokenHash,
         expiresAt: addMinutes(new Date(), 15),
       });
-      const loginUrl = tokenUrl("/api/auth/magic-login", token, redirectTo, req.url);
+      const loginUrl = authTokenUrl(req, "/api/auth/magic-login", token, redirectTo);
       await sendLoginEmail(email, loginUrl);
       return genericSent();
     }
@@ -75,7 +68,7 @@ export async function POST(req: Request) {
         token: tokenHash,
         expiresAt: addMinutes(new Date(), 30),
       });
-      const verifyUrl = tokenUrl("/api/auth/verify", token, redirectTo, req.url); // verify ставит сессию
+      const verifyUrl = authTokenUrl(req, "/api/auth/verify", token, redirectTo); // verify ставит сессию
       await sendVerifyEmail(email, verifyUrl);
       return genericSent();
     }
@@ -91,7 +84,7 @@ export async function POST(req: Request) {
       token: tokenHash,
       expiresAt: addMinutes(new Date(), 30),
     });
-    const verifyUrl = tokenUrl("/api/auth/verify", token, redirectTo, req.url);
+    const verifyUrl = authTokenUrl(req, "/api/auth/verify", token, redirectTo);
     await sendVerifyEmail(email, verifyUrl);
     return genericSent();
   } catch (e) {
