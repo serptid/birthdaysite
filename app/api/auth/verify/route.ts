@@ -15,34 +15,38 @@ function authRedirect(url: string, key: string, value: string, redirectTo: strin
 }
 
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
-  const redirectTo = normalizeAuthRedirect(req.nextUrl.searchParams.get("next"));
-  if (!token || token.length > 256) {
-    return NextResponse.redirect(authRedirect(req.url, "verify", "missing", redirectTo));
-  }
+  try {
+    const token = req.nextUrl.searchParams.get("token");
+    const redirectTo = normalizeAuthRedirect(req.nextUrl.searchParams.get("next"));
+    if (!token || token.length > 256) {
+      return NextResponse.redirect(authRedirect(req.url, "verify", "missing", redirectTo));
+    }
 
-  const rec = await db.query.emailVerifications.findFirst({
-    where: eq(emailVerifications.token, hashToken(token)),
-  });
+    const rec = await db.query.emailVerifications.findFirst({
+      where: eq(emailVerifications.token, hashToken(token)),
+    });
 
-  if (!rec || rec.expiresAt < new Date()) {
-    if (rec) await db.delete(emailVerifications).where(eq(emailVerifications.id, rec.id));
-    return NextResponse.redirect(authRedirect(req.url, "verify", "expired", redirectTo));
-  }
+    if (!rec || rec.expiresAt < new Date()) {
+      if (rec) await db.delete(emailVerifications).where(eq(emailVerifications.id, rec.id));
+      return NextResponse.redirect(authRedirect(req.url, "verify", "expired", redirectTo));
+    }
 
-  // подтвердить пользователя
-  const user = await db.query.users.findFirst({ where: eq(users.id, rec.userId) });
-  if (!user) {
+    // подтвердить пользователя
+    const user = await db.query.users.findFirst({ where: eq(users.id, rec.userId) });
+    if (!user) {
+      await db.delete(emailVerifications).where(eq(emailVerifications.id, rec.id));
+      return NextResponse.redirect(authRedirect(req.url, "verify", "notfound", redirectTo));
+    }
+
+    await db.update(users).set({ isVerified: true }).where(eq(users.id, rec.userId));
+
+    await setSessionCookie({ id: user.id, email: user.email });
     await db.delete(emailVerifications).where(eq(emailVerifications.id, rec.id));
-    return NextResponse.redirect(authRedirect(req.url, "verify", "notfound", redirectTo));
+
+    return NextResponse.redirect(authRedirect(req.url, "verify", "ok", redirectTo));
+  } catch (error) {
+    console.error("VERIFY_ROUTE_ERROR", error);
+    const redirectTo = normalizeAuthRedirect(req.nextUrl.searchParams.get("next"));
+    return NextResponse.redirect(authRedirect(req.url, "verify", "error", redirectTo));
   }
-
-  await db.update(users).set({ isVerified: true }).where(eq(users.id, rec.userId));
-
-  // одноразовость
-  await db.delete(emailVerifications).where(eq(emailVerifications.id, rec.id));
-
-  await setSessionCookie({ id: user.id, email: user.email });
-
-  return NextResponse.redirect(authRedirect(req.url, "verify", "ok", redirectTo));
 }

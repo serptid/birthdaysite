@@ -14,35 +14,39 @@ function authRedirect(url: string, key: string, value: string, redirectTo: strin
 }
 
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
-  const redirectTo = normalizeAuthRedirect(req.nextUrl.searchParams.get("next"));
-  if (!token || token.length > 256) {
-    return NextResponse.redirect(authRedirect(req.url, "login", "missing", redirectTo));
-  }
+  try {
+    const token = req.nextUrl.searchParams.get("token");
+    const redirectTo = normalizeAuthRedirect(req.nextUrl.searchParams.get("next"));
+    if (!token || token.length > 256) {
+      return NextResponse.redirect(authRedirect(req.url, "login", "missing", redirectTo));
+    }
 
-  // ищем токен
-  const rec = await db.query.loginTokens.findFirst({
-    where: eq(loginTokens.token, hashToken(token)),
-  });
+    // ищем токен
+    const rec = await db.query.loginTokens.findFirst({
+      where: eq(loginTokens.token, hashToken(token)),
+    });
 
-  // токен не найден или просрочен
-  if (!rec || rec.expiresAt < new Date()) {
-    // попытка зачистить, если найден
-    if (rec) await db.delete(loginTokens).where(eq(loginTokens.id, rec.id));
-    return NextResponse.redirect(authRedirect(req.url, "login", "expired", redirectTo));
-  }
+    // токен не найден или просрочен
+    if (!rec || rec.expiresAt < new Date()) {
+      // попытка зачистить, если найден
+      if (rec) await db.delete(loginTokens).where(eq(loginTokens.id, rec.id));
+      return NextResponse.redirect(authRedirect(req.url, "login", "expired", redirectTo));
+    }
 
-  // ищем пользователя
-  const user = await db.query.users.findFirst({ where: eq(users.id, rec.userId) });
-  if (!user) {
+    // ищем пользователя
+    const user = await db.query.users.findFirst({ where: eq(users.id, rec.userId) });
+    if (!user) {
+      await db.delete(loginTokens).where(eq(loginTokens.id, rec.id));
+      return NextResponse.redirect(authRedirect(req.url, "login", "notfound", redirectTo));
+    }
+
+    await setSessionCookie({ id: user.id, email: user.email });
     await db.delete(loginTokens).where(eq(loginTokens.id, rec.id));
-    return NextResponse.redirect(authRedirect(req.url, "login", "notfound", redirectTo));
+
+    return NextResponse.redirect(authRedirect(req.url, "login", "ok", redirectTo));
+  } catch (error) {
+    console.error("MAGIC_LOGIN_ERROR", error);
+    const redirectTo = normalizeAuthRedirect(req.nextUrl.searchParams.get("next"));
+    return NextResponse.redirect(authRedirect(req.url, "login", "error", redirectTo));
   }
-
-  // одноразовость
-  await db.delete(loginTokens).where(eq(loginTokens.id, rec.id));
-
-  await setSessionCookie({ id: user.id, email: user.email });
-
-  return NextResponse.redirect(authRedirect(req.url, "login", "ok", redirectTo));
 }
