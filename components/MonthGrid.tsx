@@ -41,13 +41,13 @@ function getTodayInTZ(tz: string): Today {
 export default function MonthGrid({ year, month, birthdays, theme = DEFAULT_CALENDAR_THEME, onDayClick }: MonthGridProps) {
   // Таймзона только на клиенте
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", [])
-  const [today, setToday] = useState<Today>(() => getTodayInTZ(tz))
+  const [today, setToday] = useState<Today | null>(null)
 
   // Сверяем текущий день регулярно: это переживает сон вкладки и смену даты без перезагрузки.
   useEffect(() => {
     const syncToday = () => {
       const t = getTodayInTZ(tz)
-      setToday(prev => (prev.y !== t.y || prev.m !== t.m || prev.d !== t.d ? t : prev))
+      setToday(prev => (!prev || prev.y !== t.y || prev.m !== t.m || prev.d !== t.d ? t : prev))
     }
 
     syncToday()
@@ -99,7 +99,7 @@ export default function MonthGrid({ year, month, birthdays, theme = DEFAULT_CALE
     <div className="isolate grid grid-cols-11 gap-1 w-full">
       {days.map(day => {
         const hasBirthday = hasBirthdays(year, month, day)
-        const isToday = year === today.y && month === today.m - 1 && day === today.d
+        const isToday = Boolean(today && year === today.y && month === today.m - 1 && day === today.d)
 
         const base =
           "relative w-6 h-6 rounded-sm border border-transparent flex items-center justify-center text-xs font-extrabold transition-all duration-200 hover:scale-110 cursor-pointer group hover:z-40 focus-visible:z-40"

@@ -49,6 +49,12 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+@media (min-width: 1024px) and (max-height: 950px) {
+  :root {
+    font-size: 90%;
+  }
+}
+
 
 @theme inline {
   --font-sans: var(--font-roboto-mono);
