@@ -8,6 +8,7 @@ export type SessionUser = {
 
 const SESSION_COOKIE = "session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const BASE64URL_RE = /^[A-Za-z0-9_-]+$/;
 
 function getSessionSecret() {
   const secret =
@@ -50,7 +51,10 @@ export function parseSessionCookie(raw: string | undefined): SessionUser | null 
   if (parts.length !== 2) return null;
 
   const [payload, signature] = parts;
-  if (!payload || !signature || !safeEqual(signature, sign(payload))) return null;
+  if (!payload || !signature) return null;
+  if (!BASE64URL_RE.test(payload) || !BASE64URL_RE.test(signature)) return null;
+
+  if (!safeEqual(signature, sign(payload))) return null;
 
   try {
     const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
