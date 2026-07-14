@@ -21,6 +21,7 @@ type ReminderDayOption = {
 
 interface ReminderSettingsPanelProps {
   timezone: string
+  reminderHour: number
   notificationsEnabled: boolean
   reminderDays: number[]
   disabled?: boolean
@@ -28,13 +29,21 @@ interface ReminderSettingsPanelProps {
   status?: ReminderStatus
   dayOptions: ReminderDayOption[]
   onTimezoneChange: (timezone: string) => void
+  onReminderHourChange: (hour: number) => void
   onNotificationsEnabledChange: (enabled: boolean) => void
   onReminderDaysChange: (days: number[]) => void
   onSave: () => void
 }
 
+const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
+
+function pad2(value: number) {
+  return String(value).padStart(2, "0")
+}
+
 export default function ReminderSettingsPanel({
   timezone,
+  reminderHour,
   notificationsEnabled,
   reminderDays,
   disabled,
@@ -42,6 +51,7 @@ export default function ReminderSettingsPanel({
   status,
   dayOptions,
   onTimezoneChange,
+  onReminderHourChange,
   onNotificationsEnabledChange,
   onReminderDaysChange,
   onSave,
@@ -99,6 +109,26 @@ export default function ReminderSettingsPanel({
                 {RUSSIAN_TIMEZONES.map((item) => (
                   <SelectItem key={item.timeZone} value={item.timeZone}>
                     {formatRussianTimeZoneLabel(item.city, item.timeZone)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Время отправки</Label>
+            <Select
+              value={String(reminderHour)}
+              onValueChange={(value) => onReminderHourChange(Number(value))}
+              disabled={disabled}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {HOURS.map((hour) => (
+                  <SelectItem key={hour} value={String(hour)}>
+                    {pad2(hour)}:00
                   </SelectItem>
                 ))}
               </SelectContent>

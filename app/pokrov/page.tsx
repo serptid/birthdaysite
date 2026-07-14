@@ -252,6 +252,7 @@ export default function PokrovPage() {
             <aside className="space-y-4">
               <ReminderSettingsPanel
                 timezone={timezone}
+                reminderHour={reminderHour}
                 notificationsEnabled={notificationsEnabled}
                 reminderDays={reminderDays}
                 disabled={settingsDisabled}
@@ -259,6 +260,7 @@ export default function PokrovPage() {
                 status={message}
                 dayOptions={[...REMINDER_DAY_OPTIONS]}
                 onTimezoneChange={setTimezone}
+                onReminderHourChange={setReminderHour}
                 onNotificationsEnabledChange={setNotificationsEnabled}
                 onReminderDaysChange={setReminderDays}
                 onSave={handleSaveSettings}

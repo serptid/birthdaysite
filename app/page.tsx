@@ -241,6 +241,7 @@ export default function HomePage() {
           <aside>
             <ReminderSettingsPanel
               timezone={timezone}
+              reminderHour={reminderHour}
               notificationsEnabled={notificationsEnabled}
               reminderDays={reminderDays}
               disabled={savingSettings || !user}
@@ -248,6 +249,7 @@ export default function HomePage() {
               status={settingsStatus}
               dayOptions={[...REMINDER_DAY_OPTIONS]}
               onTimezoneChange={setTimezone}
+              onReminderHourChange={setReminderHour}
               onNotificationsEnabledChange={setNotificationsEnabled}
               onReminderDaysChange={setReminderDays}
               onSave={handleSaveSettings}
