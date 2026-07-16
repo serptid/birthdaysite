@@ -7,6 +7,7 @@ import {
   normalizeCalendarTheme,
   type CalendarTheme,
 } from "@/lib/calendar-theme"
+import { updateThemeFavicon } from "@/lib/theme-favicon"
 
 type ThemeStatus = { type: "success" | "error"; text: string } | null
 
@@ -27,6 +28,7 @@ export function useCalendarThemeSettings(canSave: boolean) {
     for (const [name, value] of Object.entries(variables)) {
       root.style.setProperty(name, value)
     }
+    updateThemeFavicon(calendarTheme)
 
     return () => {
       for (const name of Object.keys(variables)) {
