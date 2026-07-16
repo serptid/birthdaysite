@@ -2,17 +2,39 @@
 
 import { useEffect, useRef, useState } from "react"
 import {
+  CALENDAR_THEME_CACHE_KEY,
   DEFAULT_CALENDAR_THEME,
   getCalendarThemeCssVariables,
   normalizeCalendarTheme,
+  parseCalendarThemeText,
+  stringifyCalendarTheme,
   type CalendarTheme,
 } from "@/lib/calendar-theme"
 import { updateThemeFavicon } from "@/lib/theme-favicon"
 
 type ThemeStatus = { type: "success" | "error"; text: string } | null
 
+function readCachedCalendarTheme() {
+  if (typeof window === "undefined") return DEFAULT_CALENDAR_THEME
+
+  try {
+    return parseCalendarThemeText(window.localStorage.getItem(CALENDAR_THEME_CACHE_KEY))
+  } catch {
+    return DEFAULT_CALENDAR_THEME
+  }
+}
+
+function writeCachedCalendarTheme(theme: CalendarTheme) {
+  if (typeof window === "undefined") return
+
+  try {
+    window.localStorage.setItem(CALENDAR_THEME_CACHE_KEY, stringifyCalendarTheme(theme))
+  } catch {}
+}
+
 export function useCalendarThemeSettings(canSave: boolean) {
   const [calendarTheme, setCalendarTheme] = useState<CalendarTheme>(DEFAULT_CALENDAR_THEME)
+  const [themeReady, setThemeReady] = useState(false)
   const [themeSaving, setThemeSaving] = useState(false)
   const [themeStatus, setThemeStatus] = useState<ThemeStatus>(null)
   const themeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -22,24 +44,31 @@ export function useCalendarThemeSettings(canSave: boolean) {
   const lastSavedTheme = useRef(JSON.stringify(DEFAULT_CALENDAR_THEME))
 
   useEffect(() => {
+    const cachedTheme = readCachedCalendarTheme()
+    setCalendarTheme(cachedTheme)
+    lastSavedTheme.current = JSON.stringify(cachedTheme)
+    pendingThemeSave.current = null
+    setThemeReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (!themeReady) return
+
     const root = document.documentElement
     const variables = getCalendarThemeCssVariables(calendarTheme)
 
     for (const [name, value] of Object.entries(variables)) {
       root.style.setProperty(name, value)
     }
+    writeCachedCalendarTheme(calendarTheme)
     updateThemeFavicon(calendarTheme)
-
-    return () => {
-      for (const name of Object.keys(variables)) {
-        root.style.removeProperty(name)
-      }
-    }
-  }, [calendarTheme])
+  }, [calendarTheme, themeReady])
 
   function syncCalendarTheme(nextTheme?: CalendarTheme | null) {
     const normalizedTheme = normalizeCalendarTheme(nextTheme)
     setCalendarTheme(normalizedTheme)
+    writeCachedCalendarTheme(normalizedTheme)
+    setThemeReady(true)
     lastSavedTheme.current = JSON.stringify(normalizedTheme)
     pendingThemeSave.current = null
     setThemeSaving(false)
@@ -49,6 +78,8 @@ export function useCalendarThemeSettings(canSave: boolean) {
   function handleCalendarThemeChange(nextTheme: CalendarTheme) {
     const normalizedTheme = normalizeCalendarTheme(nextTheme)
     setCalendarTheme(normalizedTheme)
+    writeCachedCalendarTheme(normalizedTheme)
+    setThemeReady(true)
     setThemeStatus(null)
   }
 
@@ -87,6 +118,7 @@ export function useCalendarThemeSettings(canSave: boolean) {
       if (themeRequestId.current !== requestId) return
 
       lastSavedTheme.current = JSON.stringify(savedTheme)
+      writeCachedCalendarTheme(savedTheme)
       setCalendarTheme((current) =>
         JSON.stringify(current) === serializedTheme ? savedTheme : current
       )
@@ -143,6 +175,7 @@ export function useCalendarThemeSettings(canSave: boolean) {
 
   return {
     calendarTheme,
+    themeReady,
     themeSaving,
     themeStatus,
     handleCalendarThemeChange,

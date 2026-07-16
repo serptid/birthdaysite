@@ -19,6 +19,7 @@ export const DEFAULT_CALENDAR_THEME: CalendarTheme = {
 };
 
 export const DEFAULT_CALENDAR_THEME_TEXT = JSON.stringify(DEFAULT_CALENDAR_THEME);
+export const CALENDAR_THEME_CACHE_KEY = "bdsite-calendar-theme";
 
 export const CALENDAR_THEME_PALETTE = [
   "#0a0a0a",
@@ -335,4 +336,60 @@ export function parseCalendarThemeText(value: string | null | undefined): Calend
 
 export function stringifyCalendarTheme(theme: CalendarTheme) {
   return JSON.stringify(normalizeCalendarTheme(theme));
+}
+
+export function getCalendarThemeBootstrapScript() {
+  return `
+(() => {
+  try {
+    const cacheKey = ${JSON.stringify(CALENDAR_THEME_CACHE_KEY)};
+    const defaults = ${JSON.stringify(DEFAULT_CALENDAR_THEME)};
+    const keys = ${JSON.stringify(THEME_KEYS)};
+    const hexColorRe = /^#[0-9a-fA-F]{6}$/;
+    const theme = { ...defaults };
+    const raw = window.localStorage ? window.localStorage.getItem(cacheKey) : null;
+
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const key of keys) {
+          const value = parsed[key];
+          if (typeof value === "string" && hexColorRe.test(value)) {
+            theme[key] = value.toLowerCase();
+          }
+        }
+      }
+    }
+
+    const subtleSurface = "color-mix(in srgb, " + theme.background + " 88%, " + theme.dayText + " 12%)";
+    const strongSurface = "color-mix(in srgb, " + theme.background + " 78%, " + theme.dayText + " 22%)";
+    const border = "color-mix(in srgb, " + theme.background + " 72%, " + theme.dayText + " 28%)";
+    const mutedForeground = "color-mix(in srgb, " + theme.dayText + " 72%, " + theme.background + " 28%)";
+    const accent = "color-mix(in srgb, " + theme.background + " 80%, " + theme.birthdayBackground + " 20%)";
+    const variables = {
+      "--background": theme.background,
+      "--foreground": theme.dayText,
+      "--card": subtleSurface,
+      "--card-foreground": theme.dayText,
+      "--popover": subtleSurface,
+      "--popover-foreground": theme.dayText,
+      "--primary": theme.todayBorder,
+      "--primary-foreground": theme.background,
+      "--secondary": strongSurface,
+      "--secondary-foreground": theme.dayText,
+      "--muted": strongSurface,
+      "--muted-foreground": mutedForeground,
+      "--accent": accent,
+      "--accent-foreground": theme.dayText,
+      "--border": border,
+      "--input": border,
+      "--ring": theme.todayBorder,
+    };
+
+    for (const name in variables) {
+      document.documentElement.style.setProperty(name, variables[name]);
+    }
+  } catch {}
+})();
+`;
 }

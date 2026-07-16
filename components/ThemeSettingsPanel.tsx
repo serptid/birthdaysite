@@ -15,7 +15,7 @@ import {
   Sun,
   type Icon,
 } from "@phosphor-icons/react";
-import { Palette, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppIconGlyph } from "@/components/AppIconGlyph";
 import {
@@ -23,7 +23,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   CALENDAR_THEME_PALETTE,
@@ -75,10 +74,15 @@ export default function ThemeSettingsPanel({
   status,
   onChange,
 }: ThemeSettingsPanelProps) {
-  const [open, setOpen] = useState(false);
   const detectedPresetId = getCalendarThemePresetId(theme);
   const [selectedPresetId, setSelectedPresetId] = useState(detectedPresetId);
   const customColorsVisible = selectedPresetId === CUSTOM_CALENDAR_THEME_PRESET_ID;
+  const selectedPresetLabel =
+    detectedPresetId === CUSTOM_CALENDAR_THEME_PRESET_ID
+      ? "Custom"
+      : detectedPresetId === "default"
+        ? "Цвета"
+      : CALENDAR_THEME_PRESETS.find((preset) => preset.id === detectedPresetId)?.label ?? "Custom";
 
   useEffect(() => {
     setSelectedPresetId(detectedPresetId);
@@ -118,22 +122,34 @@ export default function ThemeSettingsPanel({
 
   return (
     <div className="relative">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="flex items-center gap-2"
-        onClick={() => setOpen((current) => !current)}
-        disabled={disabled}
-      >
-        <Palette className="size-4" />
-        <span className="hidden sm:inline">Цвета</span>
-      </Button>
+      <Select value={selectedPresetId} onValueChange={updatePreset} disabled={disabled}>
+        <SelectTrigger
+          size="sm"
+          className="max-w-[12rem]"
+          title={`Цветовая схема: ${selectedPresetLabel}`}
+        >
+          {renderPresetLabel(detectedPresetId, selectedPresetLabel, theme.todayBorder)}
+        </SelectTrigger>
+        <SelectContent align="end" className="min-w-[14rem]">
+          <SelectItem value={CUSTOM_CALENDAR_THEME_PRESET_ID}>
+            {renderPresetLabel(CUSTOM_CALENDAR_THEME_PRESET_ID, "Custom", theme.todayBorder)}
+          </SelectItem>
+          {CALENDAR_THEME_PRESETS.map((preset) => (
+            <SelectItem key={preset.id} value={preset.id}>
+              {renderPresetLabel(
+                preset.id,
+                preset.id === "default" ? "Цвета" : preset.label,
+                preset.theme.todayBorder
+              )}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[min(28rem,calc(100vw-1.5rem))] rounded-md border bg-background p-3 shadow-xl">
+      {customColorsVisible && (
+        <div className="absolute right-0 top-full z-40 mt-2 w-[min(28rem,calc(100vw-1.5rem))] rounded-md border bg-background p-3 shadow-xl">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-sm font-medium">Цветовая схема</div>
+            <div className="text-sm font-medium">Custom</div>
             <Button
               type="button"
               variant="ghost"
@@ -148,26 +164,7 @@ export default function ThemeSettingsPanel({
           </div>
 
           <div className="space-y-4">
-            <div className="grid gap-2">
-              <div className="text-xs font-medium text-muted-foreground">Пресет</div>
-              <Select value={selectedPresetId} onValueChange={updatePreset} disabled={disabled}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Выберите тему" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={CUSTOM_CALENDAR_THEME_PRESET_ID}>
-                    {renderPresetLabel(CUSTOM_CALENDAR_THEME_PRESET_ID, "Custom", theme.todayBorder)}
-                  </SelectItem>
-                  {CALENDAR_THEME_PRESETS.map((preset) => (
-                    <SelectItem key={preset.id} value={preset.id}>
-                      {renderPresetLabel(preset.id, preset.label, preset.theme.todayBorder)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {customColorsVisible && CALENDAR_THEME_FIELDS.map((field) => (
+            {CALENDAR_THEME_FIELDS.map((field) => (
               <div key={field.key} className="grid gap-2">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-xs font-medium text-muted-foreground">{field.label}</div>

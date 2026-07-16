@@ -55,19 +55,36 @@ export async function GET(req: Request) {
     },
   });
 
-  let processed = 0, mailed = 0;
+  const accountStats = {
+    processed: 0,
+    mailed: 0,
+    skippedNotificationsDisabled: 0,
+    skippedBeforeHour: 0,
+    skippedNoReminderDays: 0,
+    skippedNoBirthdays: 0,
+    skippedAlreadySent: 0,
+  };
 
   for (const u of usrs) {
-    processed++;
+    accountStats.processed++;
 
     const tz = u.timezone || "Europe/Moscow";
-    if (!u.notificationsEnabled) continue;
+    if (!u.notificationsEnabled) {
+      accountStats.skippedNotificationsDisabled++;
+      continue;
+    }
 
     const t = nowInTZ(tz);
-    if (t.h < u.reminderHour) continue;
+    if (t.h < u.reminderHour) {
+      accountStats.skippedBeforeHour++;
+      continue;
+    }
 
     const reminderDays = parseReminderDays(u.reminderDays, ACCOUNT_REMINDER_DAYS);
-    if (reminderDays.length === 0) continue;
+    if (reminderDays.length === 0) {
+      accountStats.skippedNoReminderDays++;
+      continue;
+    }
 
     // достаём всех людей пользователя (можно оптимизировать SQL на сервере, но так проще и ясно)
     const people = await db.query.peopleTable.findMany({
@@ -77,7 +94,10 @@ export async function GET(req: Request) {
 
     const groups = buildReminderEmailGroups(people, reminderDays, t);
 
-    if (!hasReminderEmailItems(groups)) continue;
+    if (!hasReminderEmailItems(groups)) {
+      accountStats.skippedNoBirthdays++;
+      continue;
+    }
 
     // проверка лога, чтобы не слать повторно за этот runDate
     const runDateISO = `${t.y}-${pad2(t.m)}-${pad2(t.d)}`;
@@ -89,12 +109,15 @@ export async function GET(req: Request) {
         eq(notificationLogs.runDate, runDateISO as any) // drizzle date cast
       ),
     });
-    if (already) continue;
+    if (already) {
+      accountStats.skippedAlreadySent++;
+      continue;
+    }
     await sendReminderEmail(
       u.email,
       groups
     )
-    mailed++;
+    accountStats.mailed++;
 
     // лог на каждую запись, чтобы можно было детальнее анализировать
     const rows = groups.flatMap((group) =>
@@ -125,23 +148,40 @@ export async function GET(req: Request) {
       )
     );
 
-  let sharedProcessed = 0, sharedMailed = 0;
+  const sharedStats = {
+    processed: 0,
+    mailed: 0,
+    skippedBeforeHour: 0,
+    skippedNoConfiguredBirthdays: 0,
+    skippedNoReminderDays: 0,
+    skippedNoBirthdays: 0,
+    skippedAlreadySent: 0,
+  };
 
   for (const member of sharedMembers) {
-    sharedProcessed++;
+    sharedStats.processed++;
 
     const tz = member.timezone || "Europe/Moscow";
     const t = nowInTZ(tz);
-    if (t.h < member.reminderHour) continue;
+    if (t.h < member.reminderHour) {
+      sharedStats.skippedBeforeHour++;
+      continue;
+    }
+
+    const reminderDays = parseReminderDays(member.reminderDays, SHARED_REMINDER_DAYS);
+    if (reminderDays.length === 0) {
+      sharedStats.skippedNoReminderDays++;
+      continue;
+    }
 
     const sharedPeople = await db.query.sharedCalendarBirthdays.findMany({
       where: eq(sharedCalendarBirthdays.calendarId, member.calendarId),
       columns: { id: true, name: true, date: true, birthMonth: true, birthDay: true, birthYear: true, note: true },
     });
-    if (sharedPeople.length === 0) continue;
-
-    const reminderDays = parseReminderDays(member.reminderDays, SHARED_REMINDER_DAYS);
-    if (reminderDays.length === 0) continue;
+    if (sharedPeople.length === 0) {
+      sharedStats.skippedNoConfiguredBirthdays++;
+      continue;
+    }
 
     const groups = buildReminderEmailGroups(
       sharedPeople,
@@ -150,7 +190,10 @@ export async function GET(req: Request) {
       (day) => `${member.calendarName}: ${reminderLabel(day)}`
     );
 
-    if (!hasReminderEmailItems(groups)) continue;
+    if (!hasReminderEmailItems(groups)) {
+      sharedStats.skippedNoBirthdays++;
+      continue;
+    }
 
     const runDateISO = `${t.y}-${pad2(t.m)}-${pad2(t.d)}`;
     const already = await db.query.sharedNotificationLogs.findFirst({
@@ -160,13 +203,16 @@ export async function GET(req: Request) {
         eq(sharedNotificationLogs.runDate, runDateISO as any)
       ),
     });
-    if (already) continue;
+    if (already) {
+      sharedStats.skippedAlreadySent++;
+      continue;
+    }
 
     await sendReminderEmail(
       member.email,
       groups
     );
-    sharedMailed++;
+    sharedStats.mailed++;
 
     const rows = groups.flatMap((group) =>
       group.people.map(p => ({
@@ -184,9 +230,12 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    users: processed,
-    mailed,
-    sharedMembers: sharedProcessed,
-    sharedMailed,
+    checkedAt: new Date().toISOString(),
+    users: accountStats.processed,
+    mailed: accountStats.mailed,
+    sharedMembers: sharedStats.processed,
+    sharedMailed: sharedStats.mailed,
+    accounts: accountStats,
+    shared: sharedStats,
   });
 }

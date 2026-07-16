@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next"
 import { Roboto_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
+import { getCalendarThemeBootstrapScript } from "@/lib/calendar-theme"
 
 const RobotoMono = Roboto_Mono({
   subsets: ["latin", "cyrillic"],
@@ -100,6 +101,11 @@ export default function RootLayout({
   return (
     <html lang="ru" className="dark">
       <body className={`font-mono font-bold ${RobotoMono.variable}`}>
+        <Script
+          id="calendar-theme-bootstrap"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: getCalendarThemeBootstrapScript() }}
+        />
         {/* JSON-LD Schema.org */}
         <Script
           id="ld-website"

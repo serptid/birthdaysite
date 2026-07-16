@@ -44,6 +44,7 @@ const REMINDER_DAY_OPTIONS = [
 type ReminderPanelPlacement = "page" | "profile"
 
 const REMINDER_PANEL_PLACEMENT_KEY = "birthday-reminders-placement"
+const REMINDER_PANEL_ANIMATION_MS = 420
 
 type ReminderSettingsSnapshot = {
   timezone: string
@@ -74,13 +75,19 @@ export default function HomePage() {
   const [reminderDays, setReminderDays] = useState<number[]>([0, 1, 7])
   const [reminderHour, setReminderHour] = useState(6)
   const [reminderPanelPlacement, setReminderPanelPlacement] = useState<ReminderPanelPlacement>("page")
+  const [reminderPlacementReady, setReminderPlacementReady] = useState(false)
+  const [animateReminderPanel, setAnimateReminderPanel] = useState(false)
+  const [reminderPanelExiting, setReminderPanelExiting] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
   const [testingReminderEmail, setTestingReminderEmail] = useState(false)
   const [settingsStatus, setSettingsStatus] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const lastSavedSettingsKey = useRef<string | null>(null)
   const settingsSaveSeq = useRef(0)
+  const reminderPanelExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reminderPanelEnterTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const {
     calendarTheme,
+    themeReady,
     themeSaving,
     themeStatus,
     handleCalendarThemeChange,
@@ -127,14 +134,57 @@ export default function HomePage() {
   }
 
   function changeReminderPanelPlacement(nextPlacement: ReminderPanelPlacement) {
-    setReminderPanelPlacement(nextPlacement)
     window.localStorage.setItem(REMINDER_PANEL_PLACEMENT_KEY, nextPlacement)
+
+    if (reminderPanelExitTimer.current) {
+      clearTimeout(reminderPanelExitTimer.current)
+      reminderPanelExitTimer.current = null
+    }
+    if (reminderPanelEnterTimer.current) {
+      clearTimeout(reminderPanelEnterTimer.current)
+      reminderPanelEnterTimer.current = null
+    }
+
+    if (nextPlacement === "profile" && reminderPlacementReady && reminderPanelPlacement === "page") {
+      setAnimateReminderPanel(false)
+      setReminderPanelExiting(true)
+      reminderPanelExitTimer.current = setTimeout(() => {
+        setReminderPanelPlacement("profile")
+        setReminderPanelExiting(false)
+        reminderPanelExitTimer.current = null
+      }, REMINDER_PANEL_ANIMATION_MS)
+      return
+    }
+
+    setReminderPanelExiting(false)
+    const shouldAnimateEnter = reminderPlacementReady && nextPlacement === "page" && reminderPanelPlacement !== "page"
+    setAnimateReminderPanel(shouldAnimateEnter)
+    setReminderPanelPlacement(nextPlacement)
+
+    if (shouldAnimateEnter) {
+      reminderPanelEnterTimer.current = setTimeout(() => {
+        setAnimateReminderPanel(false)
+        reminderPanelEnterTimer.current = null
+      }, REMINDER_PANEL_ANIMATION_MS)
+    }
   }
 
   useEffect(() => {
     const savedPlacement = window.localStorage.getItem(REMINDER_PANEL_PLACEMENT_KEY)
     if (savedPlacement === "page" || savedPlacement === "profile") {
       setReminderPanelPlacement(savedPlacement)
+    }
+    setReminderPlacementReady(true)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (reminderPanelExitTimer.current) {
+        clearTimeout(reminderPanelExitTimer.current)
+      }
+      if (reminderPanelEnterTimer.current) {
+        clearTimeout(reminderPanelEnterTimer.current)
+      }
     }
   }, [])
 
@@ -315,12 +365,32 @@ export default function HomePage() {
       onSendTestEmail={sendTestReminderEmail}
     />
   )
+  const pageReady = reminderPlacementReady && themeReady
+  const shouldRenderReminderPanel = pageReady && (reminderPanelPlacement === "page" || reminderPanelExiting)
+  const shouldReserveReminderLayout = pageReady && reminderPanelPlacement === "page" && !reminderPanelExiting
+  const reminderPanelMotionClass = reminderPanelExiting
+    ? "reminder-panel-slide-out "
+    : animateReminderPanel
+      ? "reminder-panel-slide-in "
+      : ""
+  const reminderPanelPositionClass = reminderPanelExiting ? "absolute right-0 top-0 w-full max-w-[24rem] " : ""
+  const pageShellClass = pageReady
+    ? "min-h-screen overflow-x-hidden bg-background page-load-reveal"
+    : "min-h-screen overflow-x-hidden bg-background page-load-pending"
+  const headerContentClass = [
+    "mx-auto w-full max-w-full transition-[max-width] duration-300 ease-out",
+    shouldReserveReminderLayout ? "" : "xl:max-w-[calc(100%_-_24rem_-_1rem)]",
+  ].join(" ")
+  const calendarSectionClass =
+    shouldReserveReminderLayout
+      ? "space-y-4"
+      : "mx-auto w-full max-w-full space-y-4 xl:max-w-[calc(100%_-_24rem_-_1rem)]"
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={pageShellClass}>
       <header className="border-b border-border bg-background">
         <div className="container mx-auto px-3 py-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className={`${headerContentClass} flex items-center justify-between gap-3`}>
             <h1 className="text-2xl font-bold text-foreground">
               Birthday Calendar{" "}
               <CountUp
@@ -353,8 +423,8 @@ export default function HomePage() {
       </header>
 
       <main className="container mx-auto px-3 py-4">
-        <div className={reminderPanelPlacement === "page" ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]" : "grid gap-4"}>
-          <section className={reminderPanelPlacement === "page" ? "space-y-4" : "mx-auto w-full max-w-full space-y-4 xl:max-w-[calc(100%_-_24rem_-_1rem)]"}>
+        <div className={shouldReserveReminderLayout ? "relative grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]" : "relative grid gap-4"}>
+          <section className={calendarSectionClass}>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {MONTHS.map((monthName, monthIndex) => {
                 const byMonth = birthdays.filter((b) => {
@@ -378,8 +448,8 @@ export default function HomePage() {
             </div>
           </section>
 
-          {reminderPanelPlacement === "page" && (
-            <aside>
+          {shouldRenderReminderPanel && (
+            <aside className={`${reminderPanelMotionClass}${reminderPanelPositionClass}overflow-visible`}>
               {reminderSettingsPanel("page")}
             </aside>
           )}
@@ -398,7 +468,7 @@ export default function HomePage() {
         onClose={() => setShowAccountModal(false)}
         initialUser={user}
         authLoading={authLoading}
-        passwordOnly={reminderPanelPlacement === "page"}
+        passwordOnly={shouldRenderReminderPanel}
         onRemindersMoveToProfile={() => changeReminderPanelPlacement("profile")}
         reminderSettingsPanel={reminderSettingsPanel("profile")}
       />
