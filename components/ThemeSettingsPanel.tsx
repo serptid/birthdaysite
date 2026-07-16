@@ -9,7 +9,6 @@ import {
   Leaf,
   MoonStars,
   PaintBrush,
-  Palette as PhosphorPalette,
   RocketLaunch,
   Snowflake,
   Sparkle,
@@ -18,6 +17,7 @@ import {
 } from "@phosphor-icons/react";
 import { Palette, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppIconGlyph } from "@/components/AppIconGlyph";
 import {
   Select,
   SelectContent,
@@ -44,7 +44,6 @@ type ThemeStatus = {
 
 const THEME_PRESET_ICONS: Record<string, Icon> = {
   [CUSTOM_CALENDAR_THEME_PRESET_ID]: PaintBrush,
-  default: PhosphorPalette,
   afterglow: Sun,
   argonaut: RocketLaunch,
   "ayu-mirage": MoonStars,
@@ -102,12 +101,16 @@ export default function ThemeSettingsPanel({
 
     return (
       <span className="flex min-w-0 items-center gap-2">
-        <Icon
-          aria-hidden="true"
-          className="size-4 shrink-0"
-          style={{ color }}
-          weight="duotone"
-        />
+        {presetId === "default" ? (
+          <AppIconGlyph className="size-4 shrink-0" style={{ color }} />
+        ) : (
+          <Icon
+            aria-hidden="true"
+            className="size-4 shrink-0"
+            style={{ color }}
+            weight="duotone"
+          />
+        )}
         <span className="truncate">{label}</span>
       </span>
     );
