@@ -42,11 +42,15 @@ export async function sendReminderEmail(
     ...activeGroups.map((group) => `${group.label}: ${group.items.map(x => x.name).join(", ")}`),
   ].filter(Boolean).join("\n");
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: `BDsite <${process.env.MAIL_FROM!}>`,
     to,
     subject: "BDsite — напоминания о днях рождения",
     text: text || "Проверьте календарь на bdsite.ru",
     html,
   });
+
+  if (result.error) {
+    throw new Error(`Resend reminder error: ${result.error.name}: ${result.error.message}`);
+  }
 }

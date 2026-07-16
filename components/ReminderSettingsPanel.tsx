@@ -1,7 +1,8 @@
 "use client"
 
-import type { ReactNode } from "react"
-import { Bell } from "lucide-react"
+import { useEffect, useState, type ReactNode } from "react"
+import { Bell, MailCheck } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -27,8 +28,10 @@ interface ReminderSettingsPanelProps {
   disabled?: boolean
   saving?: boolean
   status?: ReminderStatus
+  testSending?: boolean
   dayOptions: ReminderDayOption[]
   headerAction?: ReactNode
+  onSendTestEmail?: () => void
   onTimezoneChange: (timezone: string) => void
   onReminderHourChange: (hour: number) => void
   onNotificationsEnabledChange: (enabled: boolean) => void
@@ -49,13 +52,22 @@ export default function ReminderSettingsPanel({
   disabled,
   saving,
   status,
+  testSending,
   dayOptions,
   headerAction,
+  onSendTestEmail,
   onTimezoneChange,
   onReminderHourChange,
   onNotificationsEnabledChange,
   onReminderDaysChange,
 }: ReminderSettingsPanelProps) {
+  const [mounted, setMounted] = useState(false)
+  const controlsDisabled = !mounted || Boolean(disabled)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   function toggleReminderDay(day: number) {
     if (reminderDays.includes(day)) {
       const nextDays = reminderDays.filter((item) => item !== day)
@@ -82,7 +94,7 @@ export default function ReminderSettingsPanel({
               type="checkbox"
               checked={notificationsEnabled}
               onChange={(event) => onNotificationsEnabledChange(event.target.checked)}
-              disabled={disabled}
+              disabled={controlsDisabled}
             />
             Получать письма обо всех ДР
           </label>
@@ -96,7 +108,7 @@ export default function ReminderSettingsPanel({
                     type="checkbox"
                     checked={reminderDays.includes(option.value)}
                     onChange={() => toggleReminderDay(option.value)}
-                    disabled={disabled}
+                    disabled={controlsDisabled}
                   />
                   {option.label}
                 </label>
@@ -106,7 +118,7 @@ export default function ReminderSettingsPanel({
 
           <div className="grid gap-2">
             <Label>Таймзона</Label>
-            <Select value={timezone} onValueChange={onTimezoneChange} disabled={disabled}>
+            <Select value={timezone} onValueChange={onTimezoneChange} disabled={controlsDisabled}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -125,7 +137,7 @@ export default function ReminderSettingsPanel({
             <Select
               value={String(reminderHour)}
               onValueChange={(value) => onReminderHourChange(Number(value))}
-              disabled={disabled}
+              disabled={controlsDisabled}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -145,6 +157,19 @@ export default function ReminderSettingsPanel({
           )}
         </div>
       </div>
+
+      {onSendTestEmail && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={onSendTestEmail}
+          disabled={controlsDisabled || testSending}
+        >
+          <MailCheck className="size-4" />
+          {testSending ? "Отправляем..." : "Проверить отправку письма"}
+        </Button>
+      )}
 
       {status && (
         <div className={status.type === "success" ? "text-sm text-green-500" : "text-sm text-red-500"}>

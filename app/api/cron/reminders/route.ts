@@ -14,9 +14,17 @@ import {
   sharedNotificationLogs,
 } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { addDaysUTC, mmdd, parseISO, pad2, nowInTZ } from "@/lib/when";
+import { nowInTZ, pad2 } from "@/lib/when";
 import { sendReminderEmail } from "@/lib/reminderEmail";
 import { timingSafeEqual } from "crypto";
+import {
+  ACCOUNT_REMINDER_DAYS,
+  SHARED_REMINDER_DAYS,
+  buildReminderEmailGroups,
+  hasReminderEmailItems,
+  parseReminderDays,
+  reminderLabel,
+} from "@/lib/reminder-groups";
 
 function safeEqual(a: string, b: string) {
   const aBuffer = Buffer.from(a);
@@ -30,43 +38,6 @@ function authOk(req: Request) {
 
   if (!secret || !auth) return false;
   return safeEqual(auth, `Bearer ${secret}`);
-}
-
-const allowedReminderDays = new Set([0, 1, 3, 7]);
-
-function parseReminderDays(value: string) {
-  const days = value
-    .split(",")
-    .map((item) => Number(item))
-    .filter((item) => allowedReminderDays.has(item));
-
-  return [...new Set(days)].sort((a, b) => a - b);
-}
-
-function reminderLabel(day: number) {
-  if (day === 0) return "Сегодня";
-  if (day === 1) return "Завтра";
-  return `Через ${day} дней`;
-}
-
-function leap(y: number) {
-  return (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
-}
-
-function birthdayMMDD(person: { date: string | null; birthMonth: number | null; birthDay: number | null }, targetY: number) {
-  let m = person.birthMonth;
-  let d = person.birthDay;
-
-  if ((!m || !d) && person.date) {
-    const parsed = parseISO(person.date);
-    m = parsed.m;
-    d = parsed.d;
-  }
-
-  if (!m || !d) return null;
-  if (m === 2 && d === 29 && !leap(targetY)) d = 28;
-
-  return `${pad2(m)}-${pad2(d)}`;
 }
 
 export async function GET(req: Request) {
@@ -93,9 +64,9 @@ export async function GET(req: Request) {
     if (!u.notificationsEnabled) continue;
 
     const t = nowInTZ(tz);
-    if (t.h !== u.reminderHour) continue;
+    if (t.h < u.reminderHour) continue;
 
-    const reminderDays = parseReminderDays(u.reminderDays);
+    const reminderDays = parseReminderDays(u.reminderDays, ACCOUNT_REMINDER_DAYS);
     if (reminderDays.length === 0) continue;
 
     // достаём всех людей пользователя (можно оптимизировать SQL на сервере, но так проще и ясно)
@@ -104,21 +75,9 @@ export async function GET(req: Request) {
       columns: { id: true, name: true, date: true, birthMonth: true, birthDay: true, birthYear: true, note: true },
     });
 
-    const groups = reminderDays.map((day) => {
-      const target = addDaysUTC(t.y, t.m, t.d, day);
-      const targetMMDD = mmdd(target.y, target.m, target.d);
-      const matches = people.filter((person) => birthdayMMDD(person, target.y) === targetMMDD);
+    const groups = buildReminderEmailGroups(people, reminderDays, t);
 
-      return {
-        day,
-        key: `D${day}`,
-        label: reminderLabel(day),
-        target,
-        people: matches,
-      };
-    });
-
-    if (groups.every((group) => group.people.length === 0)) continue;
+    if (!hasReminderEmailItems(groups)) continue;
 
     // проверка лога, чтобы не слать повторно за этот runDate
     const runDateISO = `${t.y}-${pad2(t.m)}-${pad2(t.d)}`;
@@ -131,28 +90,9 @@ export async function GET(req: Request) {
       ),
     });
     if (already) continue;
-    const toMail = (arr: {
-      name: string | null;
-      date: string | null;
-      birthMonth: number | null;
-      birthDay: number | null;
-      birthYear: number | null;
-      note: string | null;
-    }[], targetY: number) => arr
-      .filter(p => p.name && (p.date || (p.birthMonth && p.birthDay)))
-      .map(p => ({
-        name: p.name as string,
-        date: p.date ?? `${p.birthYear ?? targetY}-${pad2(p.birthMonth!)}-${pad2(p.birthDay!)}`,
-        note: p.note ?? null,
-      }))
-
     await sendReminderEmail(
       u.email,
-      groups.map((group) => ({
-        key: group.key,
-        label: group.label,
-        items: toMail(group.people, group.target.y),
-      }))
+      groups
     )
     mailed++;
 
@@ -192,7 +132,7 @@ export async function GET(req: Request) {
 
     const tz = member.timezone || "Europe/Moscow";
     const t = nowInTZ(tz);
-    if (t.h !== member.reminderHour) continue;
+    if (t.h < member.reminderHour) continue;
 
     const sharedPeople = await db.query.sharedCalendarBirthdays.findMany({
       where: eq(sharedCalendarBirthdays.calendarId, member.calendarId),
@@ -200,24 +140,17 @@ export async function GET(req: Request) {
     });
     if (sharedPeople.length === 0) continue;
 
-    const reminderDays = parseReminderDays(member.reminderDays);
+    const reminderDays = parseReminderDays(member.reminderDays, SHARED_REMINDER_DAYS);
     if (reminderDays.length === 0) continue;
 
-    const groups = reminderDays.map((day) => {
-      const target = addDaysUTC(t.y, t.m, t.d, day);
-      const targetMMDD = mmdd(target.y, target.m, target.d);
-      const matches = sharedPeople.filter((person) => birthdayMMDD(person, target.y) === targetMMDD);
+    const groups = buildReminderEmailGroups(
+      sharedPeople,
+      reminderDays,
+      t,
+      (day) => `${member.calendarName}: ${reminderLabel(day)}`
+    );
 
-      return {
-        day,
-        key: `D${day}`,
-        label: `${member.calendarName}: ${reminderLabel(day)}`,
-        target,
-        people: matches,
-      };
-    });
-
-    if (groups.every((group) => group.people.length === 0)) continue;
+    if (!hasReminderEmailItems(groups)) continue;
 
     const runDateISO = `${t.y}-${pad2(t.m)}-${pad2(t.d)}`;
     const already = await db.query.sharedNotificationLogs.findFirst({
@@ -229,27 +162,9 @@ export async function GET(req: Request) {
     });
     if (already) continue;
 
-    const toMail = (arr: {
-      name: string;
-      date: string | null;
-      birthMonth: number;
-      birthDay: number;
-      birthYear: number | null;
-      note: string | null;
-    }[], targetY: number) => arr
-      .map(p => ({
-        name: p.name,
-        date: p.date ?? `${p.birthYear ?? targetY}-${pad2(p.birthMonth)}-${pad2(p.birthDay)}`,
-        note: p.note ?? null,
-      }));
-
     await sendReminderEmail(
       member.email,
-      groups.map((group) => ({
-        key: group.key,
-        label: group.label,
-        items: toMail(group.people, group.target.y),
-      }))
+      groups
     );
     sharedMailed++;
 

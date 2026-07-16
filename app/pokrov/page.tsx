@@ -99,6 +99,7 @@ export default function PokrovPage() {
   const [showBirthdayModal, setShowBirthdayModal] = useState(false)
   const [selectedDay, setSelectedDay] = useState<{ month: number; day: number } | null>(null)
   const [savingSettings, setSavingSettings] = useState(false)
+  const [testingReminderEmail, setTestingReminderEmail] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const [timezone, setTimezone] = useState("Europe/Moscow")
@@ -234,6 +235,42 @@ export default function PokrovPage() {
     loadPokrov()
   }
 
+  async function sendTestReminderEmail() {
+    if (!data) {
+      setShowAccountModal(true)
+      return
+    }
+
+    setTestingReminderEmail(true)
+    setMessage(null)
+
+    try {
+      const res = await fetch("/api/shared/pokrov/reminder-test", { method: "POST" })
+      const payload = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        throw new Error(payload?.error === "rate_limited" ? "rate_limited" : "send_failed")
+      }
+
+      setMessage({
+        type: "success",
+        text: payload?.matched
+          ? "Письмо с реальными напоминаниями отправлено."
+          : "Тестовое письмо отправлено: ДР на выбранные даты не найдены.",
+      })
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text:
+          error instanceof Error && error.message === "rate_limited"
+            ? "Слишком много проверок. Попробуй позже."
+            : "Не удалось отправить тестовое письмо.",
+      })
+    } finally {
+      setTestingReminderEmail(false)
+    }
+  }
+
   const birthdays = data?.birthdays ?? []
   const showAccessPrompt = !loading && !data
   const settingsDisabled = !data
@@ -246,6 +283,7 @@ export default function PokrovPage() {
       disabled={settingsDisabled}
       saving={savingSettings}
       status={message}
+      testSending={testingReminderEmail}
       dayOptions={[...REMINDER_DAY_OPTIONS]}
       headerAction={
         placement === "page" ? (
@@ -274,6 +312,7 @@ export default function PokrovPage() {
       onReminderHourChange={setReminderHour}
       onNotificationsEnabledChange={setNotificationsEnabled}
       onReminderDaysChange={setReminderDays}
+      onSendTestEmail={sendTestReminderEmail}
     />
   )
 

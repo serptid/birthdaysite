@@ -75,6 +75,7 @@ export default function HomePage() {
   const [reminderHour, setReminderHour] = useState(6)
   const [reminderPanelPlacement, setReminderPanelPlacement] = useState<ReminderPanelPlacement>("page")
   const [savingSettings, setSavingSettings] = useState(false)
+  const [testingReminderEmail, setTestingReminderEmail] = useState(false)
   const [settingsStatus, setSettingsStatus] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const lastSavedSettingsKey = useRef<string | null>(null)
   const settingsSaveSeq = useRef(0)
@@ -237,6 +238,42 @@ export default function HomePage() {
     return month - 1
   }
 
+  async function sendTestReminderEmail() {
+    if (!user) {
+      setShowAccountModal(true)
+      return
+    }
+
+    setTestingReminderEmail(true)
+    setSettingsStatus(null)
+
+    try {
+      const res = await fetch("/api/account/reminder-test", { method: "POST" })
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        throw new Error(data?.error === "rate_limited" ? "rate_limited" : "send_failed")
+      }
+
+      setSettingsStatus({
+        type: "success",
+        text: data?.matched
+          ? "Письмо с реальными напоминаниями отправлено."
+          : "Тестовое письмо отправлено: ДР на выбранные даты не найдены.",
+      })
+    } catch (error) {
+      setSettingsStatus({
+        type: "error",
+        text:
+          error instanceof Error && error.message === "rate_limited"
+            ? "Слишком много проверок. Попробуй позже."
+            : "Не удалось отправить тестовое письмо.",
+      })
+    } finally {
+      setTestingReminderEmail(false)
+    }
+  }
+
   const reminderSettingsPanel = (placement: ReminderPanelPlacement) => (
     <ReminderSettingsPanel
       timezone={timezone}
@@ -246,6 +283,7 @@ export default function HomePage() {
       disabled={!user}
       saving={savingSettings}
       status={settingsStatus}
+      testSending={testingReminderEmail}
       dayOptions={[...REMINDER_DAY_OPTIONS]}
       headerAction={
         placement === "page" ? (
@@ -274,6 +312,7 @@ export default function HomePage() {
       onReminderHourChange={setReminderHour}
       onNotificationsEnabledChange={setNotificationsEnabled}
       onReminderDaysChange={setReminderDays}
+      onSendTestEmail={sendTestReminderEmail}
     />
   )
 
