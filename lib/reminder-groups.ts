@@ -19,6 +19,8 @@ export type ReminderCurrentDate = {
 export type ReminderEmailItem = {
   name: string;
   date: string;
+  birthYear: number | null;
+  targetYear: number;
   note: string | null;
 };
 
@@ -80,6 +82,8 @@ function toEmailItems<TPerson extends ReminderBirthday>(people: TPerson[], targe
     .map((person) => ({
       name: person.name as string,
       date: person.date ?? `${person.birthYear ?? targetYear}-${pad2(person.birthMonth!)}-${pad2(person.birthDay!)}`,
+      birthYear: person.birthYear ?? null,
+      targetYear,
       note: person.note ?? null,
     }));
 }
@@ -124,6 +128,8 @@ export function buildEmptyReminderTestGroups(
         {
           name: "Дней рождений не назначено",
           date: today,
+          birthYear: null,
+          targetYear: currentDate.y,
           note: "Это тестовое письмо. На сегодня, завтра и через неделю дней рождений нет.",
         },
       ],

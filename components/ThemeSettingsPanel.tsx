@@ -24,6 +24,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
   CALENDAR_THEME_PALETTE,
   CALENDAR_THEME_FIELDS,
@@ -69,6 +70,8 @@ interface ThemeSettingsPanelProps {
   disabled?: boolean;
   saving?: boolean;
   status?: ThemeStatus;
+  className?: string;
+  triggerClassName?: string;
   onChange: (theme: CalendarTheme) => void;
 }
 
@@ -77,6 +80,8 @@ export default function ThemeSettingsPanel({
   disabled,
   saving,
   status,
+  className,
+  triggerClassName,
   onChange,
 }: ThemeSettingsPanelProps) {
   const detectedPresetId = getCalendarThemePresetId(theme);
@@ -143,11 +148,11 @@ export default function ThemeSettingsPanel({
   }
 
   return (
-    <div className="relative">
+    <div className={cn("relative", className)}>
       <Select value={selectedPresetId} onValueChange={updatePreset} disabled={disabled}>
         <SelectTrigger
           size="sm"
-          className="max-w-[12rem]"
+          className={cn("max-w-[12rem]", triggerClassName)}
           title={`Цветовая схема: ${selectedPresetLabel}`}
           onKeyDown={handlePresetKeyDown}
         >
@@ -170,7 +175,7 @@ export default function ThemeSettingsPanel({
       </Select>
 
       {customColorsVisible && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-[min(28rem,calc(100vw-1.5rem))] rounded-md border bg-background p-3 shadow-xl">
+        <div className="absolute left-0 right-auto top-full z-40 mt-2 max-h-[calc(100svh-7rem)] w-[min(28rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-md border bg-background p-3 shadow-xl [-webkit-overflow-scrolling:touch] sm:left-auto sm:right-0">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div className="text-sm font-medium">Custom</div>
             <Button

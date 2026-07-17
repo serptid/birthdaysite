@@ -390,32 +390,44 @@ export default function PokrovPage() {
     <div className={pageShellClass}>
       <header className="border-b border-border">
         <div className="container mx-auto px-3 py-4">
-          <div className={`${headerContentClass} flex flex-wrap items-center justify-between gap-3`}>
-            <div className="flex items-center gap-3">
-              <div className="size-15 shrink-0">
+          <div className={`${headerContentClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="size-12 shrink-0 sm:size-15">
                 <img
                   src="/POKROV.png"
                   alt=""
                   className="size-full scale-[1.2] object-contain"
                 />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">Народный хор Покров</h1>
-                <div className="text-sm text-muted-foreground">Общий календарь дней рождения коллектива</div>
+              <div className="min-w-0">
+                <h1 className="truncate text-[clamp(1.2rem,5.5vw,1.5rem)] font-bold leading-tight sm:text-2xl">
+                  Народный хор Покров
+                </h1>
+                <div className="truncate text-sm text-muted-foreground">Общий календарь дней рождения коллектива</div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className={`${data ? "grid-cols-2" : "grid-cols-1"} grid w-full min-w-0 gap-2 sm:flex sm:w-auto sm:items-center`}>
               {data && (
                 <ThemeSettingsPanel
                   theme={calendarTheme}
                   saving={themeSaving}
                   status={themeStatus}
+                  className="min-w-0"
+                  triggerClassName="w-full"
                   onChange={handleCalendarThemeChange}
                 />
               )}
-              <Button variant="outline" onClick={() => setShowAccountModal(true)}>
-                <UserPlus className="size-4" />
-                {data ? data.user.email : "Войти или зарегистрироваться"}
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-0 shrink justify-start gap-2 px-3 sm:w-auto sm:justify-center"
+                title={data ? data.user.email : "Войти или зарегистрироваться"}
+                onClick={() => setShowAccountModal(true)}
+              >
+                <UserPlus className="size-4 shrink-0" />
+                <span className="min-w-0 truncate">
+                  {data ? data.user.email : "Войти или зарегистрироваться"}
+                </span>
               </Button>
             </div>
           </div>
@@ -444,7 +456,7 @@ export default function PokrovPage() {
                   const byMonth = birthdays.filter((birthday) => getBirthdayMonth(birthday) === monthIndex)
 
                   return (
-                    <Card key={monthIndex} className="border-border bg-transparent p-4 shadow-none">
+                    <Card key={monthIndex} className="border-border bg-transparent p-3 shadow-none sm:p-4">
                       <div className="space-y-3">
                         <h2 className="text-center text-lg font-semibold text-foreground">{monthName}</h2>
                         <MonthGrid

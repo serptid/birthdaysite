@@ -119,8 +119,8 @@ export default function ReminderSettingsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border p-3">
-        <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="rounded-md border p-3 sm:p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Bell className="size-4" />
             Напоминания
@@ -142,7 +142,7 @@ export default function ReminderSettingsPanel({
             <div className="text-sm text-muted-foreground">Когда напоминать</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1">
               {dayOptions.map((option) => (
-                <label key={option.value} className="flex items-center gap-2 rounded border px-2 py-2 text-sm">
+                <label key={option.value} className="flex min-h-11 items-center gap-2 rounded border px-2 py-2 text-sm">
                   <input
                     type="checkbox"
                     checked={reminderDays.includes(option.value)}
@@ -161,10 +161,10 @@ export default function ReminderSettingsPanel({
               <SelectTrigger className="w-full [&>span]:flex-1">
                 <TimeZoneOptionLabel option={selectedTimeZoneOption} trigger />
               </SelectTrigger>
-              <SelectContent className="min-w-[min(27rem,calc(100vw-1.5rem))]">
+              <SelectContent className="max-h-[min(24rem,calc(100svh-6rem))] min-w-[min(27rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)]">
                 {!getTimeZoneOption(timezone) && (
                   <>
-                    <SelectItem value={selectedTimeZoneOption.timeZone} className="pr-10">
+                    <SelectItem value={selectedTimeZoneOption.timeZone} className="py-2 pr-10">
                       <TimeZoneOptionLabel option={selectedTimeZoneOption} />
                     </SelectItem>
                     <SelectSeparator />
@@ -174,7 +174,7 @@ export default function ReminderSettingsPanel({
                   <SelectGroup key={group.label}>
                     <SelectLabel>{group.label}</SelectLabel>
                     {group.options.map((item) => (
-                      <SelectItem key={item.timeZone} value={item.timeZone} className="pr-10">
+                      <SelectItem key={item.timeZone} value={item.timeZone} className="py-2 pr-10">
                         <TimeZoneOptionLabel option={item} />
                       </SelectItem>
                     ))}
@@ -192,12 +192,12 @@ export default function ReminderSettingsPanel({
               onValueChange={(value) => onReminderHourChange(Number(value))}
               disabled={controlsDisabled}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[8rem]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent align="start" className="max-h-[min(18rem,calc(100svh-6rem))] min-w-[7rem]">
                 {HOURS.map((hour) => (
-                  <SelectItem key={hour} value={String(hour)}>
+                  <SelectItem key={hour} value={String(hour)} className="py-2">
                     {pad2(hour)}:00
                   </SelectItem>
                 ))}

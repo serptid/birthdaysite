@@ -390,8 +390,8 @@ export default function HomePage() {
     <div className={pageShellClass}>
       <header className="border-b border-border bg-background">
         <div className="container mx-auto px-3 py-4">
-          <div className={`${headerContentClass} flex items-center justify-between gap-3`}>
-            <h1 className="text-2xl font-bold text-foreground">
+          <div className={`${headerContentClass} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
+            <h1 className="w-full whitespace-nowrap text-[clamp(1.125rem,6vw,1.5rem)] font-bold leading-tight text-foreground sm:w-auto sm:text-2xl">
               Birthday Calendar{" "}
               <CountUp
                 to={currentYear}
@@ -399,12 +399,14 @@ export default function HomePage() {
                 className="inline-block min-w-[4ch] text-right tabular-nums"
               />
             </h1>
-            <div className="flex items-center gap-2">
+            <div className={`${user ? "grid-cols-2" : "grid-cols-1"} grid w-full min-w-0 gap-2 sm:flex sm:w-auto sm:items-center`}>
               {user && (
                 <ThemeSettingsPanel
                   theme={calendarTheme}
                   saving={themeSaving}
                   status={themeStatus}
+                  className="min-w-0"
+                  triggerClassName="w-full"
                   onChange={handleCalendarThemeChange}
                 />
               )}
@@ -412,10 +414,13 @@ export default function HomePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowAccountModal(true)}
-                className="flex items-center gap-2"
+                className="min-w-0 shrink justify-start gap-2 px-3 sm:w-auto sm:justify-center"
+                title={authLoading && !user ? "Проверяем..." : user ? user.email : "Войти"}
               >
-                <User className="w-4 h-4" />
-                {authLoading && !user ? "Проверяем..." : user ? user.email : "Войти"}
+                <User className="size-4 shrink-0" />
+                <span className="min-w-0 truncate">
+                  {authLoading && !user ? "Проверяем..." : user ? user.email : "Войти"}
+                </span>
               </Button>
             </div>
           </div>
@@ -431,7 +436,7 @@ export default function HomePage() {
                   return getBirthdayMonth(b) === monthIndex
                 })
                 return (
-                  <Card key={monthIndex} className="border-border bg-transparent p-4 shadow-none">
+                  <Card key={monthIndex} className="border-border bg-transparent p-3 shadow-none sm:p-4">
                     <div className="space-y-3">
                       <h2 className="text-lg font-semibold text-foreground text-center">{monthName}</h2>
                       <MonthGrid

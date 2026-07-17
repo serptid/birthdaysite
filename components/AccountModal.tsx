@@ -269,20 +269,17 @@ export default function AccountModal({
   const visibleUser = user ?? (open ? initialUser ?? null : null)
   const showAccountCheck = open && !visibleUser && (authLoading || checkingAccount)
   const controlsDisabled = pending || checkingAccount
+  const dialogSizeClass = visibleUser
+    ? passwordOnly
+      ? "sm:max-w-2xl"
+      : "sm:max-w-5xl lg:max-w-6xl"
+    : "sm:max-w-xl"
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent
-        className={
-          visibleUser
-            ? passwordOnly
-              ? "sm:max-w-2xl"
-              : "sm:max-w-5xl lg:max-w-6xl"
-            : "max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-xl"
-        }
-      >
-        <DialogHeader>
-          <DialogTitle>Аккаунт</DialogTitle>
+      <DialogContent className={`${dialogSizeClass} gap-4`}>
+        <DialogHeader className="pr-9">
+          <DialogTitle className="text-center text-xl sm:text-left">Аккаунт</DialogTitle>
           <DialogDescription className="sr-only">
             Вход, регистрация, настройки уведомлений и управление паролем аккаунта.
           </DialogDescription>
@@ -351,9 +348,9 @@ export default function AccountModal({
               </p>
             )}
 
-            <div className="flex gap-2 pt-4">
+            <div className="grid gap-2 pt-4 sm:flex">
               <Button
-                className="flex-1"
+                className="w-full sm:flex-1"
                 onClick={mode === "login" ? handlePasswordLogin : mode === "register" ? handleRegister : handleMagic}
                 disabled={pending || !email.trim() || (mode !== "magic" && password.length < 8)}
               >
@@ -365,22 +362,22 @@ export default function AccountModal({
                       ? "Создать аккаунт"
                       : "Отправить ссылку"}
               </Button>
-              <Button variant="outline" onClick={onClose} disabled={pending}>
+              <Button className="w-full sm:w-auto" variant="outline" onClick={onClose} disabled={pending}>
                 Закрыть
               </Button>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-foreground">
-                Вы вошли как <strong>{visibleUser.email}</strong>
+            <div className="grid gap-3 sm:flex sm:items-center sm:justify-between">
+              <p className="min-w-0 text-sm text-foreground">
+                Вы вошли как <strong className="break-all">{visibleUser.email}</strong>
               </p>
-              <div className="flex gap-2">
-                <Button onClick={handleLogout} variant="destructive" disabled={pending}>
+              <div className="grid grid-cols-2 gap-2 sm:flex">
+                <Button className="w-full sm:w-auto" onClick={handleLogout} variant="destructive" disabled={pending}>
                   {pending ? "Выход..." : "Выйти"}
                 </Button>
-                <Button variant="outline" onClick={onClose} disabled={pending}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={onClose} disabled={pending}>
                   Закрыть
                 </Button>
               </div>
@@ -392,10 +389,11 @@ export default function AccountModal({
             )}
 
             {passwordOnly && onRemindersMoveToProfile && (
-              <div className="flex justify-end">
+              <div className="flex justify-stretch sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={onRemindersMoveToProfile}
                   disabled={controlsDisabled}
                 >
@@ -408,7 +406,7 @@ export default function AccountModal({
             <div className={!passwordOnly && reminderSettingsPanel ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)]" : "grid gap-4"}>
               {!passwordOnly && reminderSettingsPanel}
 
-              <div className="space-y-3 rounded border p-3">
+              <div className="space-y-3 rounded border p-3 sm:p-4">
                 <div className="text-sm font-medium">{visibleUser.hasPassword ? "Смена пароля" : "Задать пароль"}</div>
                 {visibleUser.hasPassword && (
                   <div className="grid gap-2">
@@ -434,6 +432,7 @@ export default function AccountModal({
                   />
                 </div>
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={handleSavePassword}
                   disabled={controlsDisabled || newPassword.length < 8 || (Boolean(visibleUser.hasPassword) && !currentPassword)}
                 >

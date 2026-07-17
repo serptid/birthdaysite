@@ -96,13 +96,13 @@ export default function MonthGrid({ year, month, birthdays, theme = DEFAULT_CALE
   }
 
   return (
-    <div className="isolate grid grid-cols-11 gap-1 w-full">
+    <div className="isolate grid w-full grid-cols-11 gap-[clamp(0.2rem,1.2vw,0.25rem)]">
       {days.map(day => {
         const hasBirthday = hasBirthdays(year, month, day)
         const isToday = Boolean(today && year === today.y && month === today.m - 1 && day === today.d)
 
         const base =
-          "relative w-6 h-6 rounded-sm border border-transparent flex items-center justify-center text-xs font-extrabold transition-all duration-200 hover:scale-110 cursor-pointer group hover:z-40 focus-visible:z-40"
+          "relative size-[clamp(1.1rem,6.25vw,1.5rem)] rounded-sm border border-transparent flex items-center justify-center text-[clamp(0.65rem,3.3vw,0.75rem)] font-extrabold transition-all duration-200 hover:scale-110 cursor-pointer group hover:z-40 focus-visible:z-40"
         const normal = "bg-muted text-muted-foreground hover:bg-muted/80"
         const withBirthday = "bg-green-500 text-[var(--color-background)] shadow-sm"
         const todayCls = isToday
