@@ -99,7 +99,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru" className="dark">
+    <html lang="ru" className="dark" suppressHydrationWarning>
       <body className={`font-mono font-bold ${RobotoMono.variable}`}>
         <Script
           id="calendar-theme-bootstrap"

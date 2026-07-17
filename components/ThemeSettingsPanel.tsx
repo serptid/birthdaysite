@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type KeyboardEvent, useEffect, useState } from "react";
 import {
   Cat,
   ChalkboardSimple,
@@ -59,6 +59,11 @@ const THEME_PRESET_ICONS: Record<string, Icon> = {
   zenburn: Leaf,
 };
 
+const THEME_PRESET_ORDER = [
+  CUSTOM_CALENDAR_THEME_PRESET_ID,
+  ...CALENDAR_THEME_PRESETS.map((preset) => preset.id),
+];
+
 interface ThemeSettingsPanelProps {
   theme: CalendarTheme;
   disabled?: boolean;
@@ -100,6 +105,23 @@ export default function ThemeSettingsPanel({
     if (presetTheme) onChange(presetTheme);
   }
 
+  function switchPresetByKeyboard(direction: -1 | 1) {
+    const currentIndex = THEME_PRESET_ORDER.indexOf(selectedPresetId);
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex =
+      (safeIndex + direction + THEME_PRESET_ORDER.length) % THEME_PRESET_ORDER.length;
+    updatePreset(THEME_PRESET_ORDER[nextIndex]);
+  }
+
+  function handlePresetKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (disabled || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    switchPresetByKeyboard(event.key === "ArrowDown" ? 1 : -1);
+  }
+
   function renderPresetLabel(presetId: string, label: string, color: string) {
     const Icon = THEME_PRESET_ICONS[presetId] ?? Sparkle;
 
@@ -127,6 +149,7 @@ export default function ThemeSettingsPanel({
           size="sm"
           className="max-w-[12rem]"
           title={`Цветовая схема: ${selectedPresetLabel}`}
+          onKeyDown={handlePresetKeyDown}
         >
           {renderPresetLabel(detectedPresetId, selectedPresetLabel, theme.todayBorder)}
         </SelectTrigger>

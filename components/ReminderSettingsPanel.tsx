@@ -7,11 +7,19 @@ import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { RUSSIAN_TIMEZONES, formatRussianTimeZoneLabel } from "@/constants/timezones"
+import {
+  TIMEZONE_GROUPS,
+  getTimeZoneOption,
+  formatUtcOffset,
+  type TimeZoneOption,
+} from "@/constants/timezones"
 
 type ReminderStatus = { type: "success" | "error"; text: string } | null
 
@@ -44,6 +52,36 @@ function pad2(value: number) {
   return String(value).padStart(2, "0")
 }
 
+function fallbackTimeZoneOption(timeZone: string): TimeZoneOption {
+  try {
+    return {
+      label: timeZone.replaceAll("_", " "),
+      timeZone,
+      offset: formatUtcOffset(timeZone),
+    }
+  } catch {
+    return {
+      label: timeZone,
+      timeZone,
+      offset: "UTC",
+    }
+  }
+}
+
+function TimeZoneOptionLabel({ option, trigger }: { option: TimeZoneOption; trigger?: boolean }) {
+  return (
+    <span
+      className={[
+        "grid min-w-0 grid-cols-[minmax(0,1fr)_5.25rem] items-center gap-3 text-left",
+        trigger ? "w-full" : "w-[min(23rem,calc(100vw-4.5rem))]",
+      ].join(" ")}
+    >
+      <span className="min-w-0 truncate justify-self-start">{option.label}</span>
+      <span className="text-right text-muted-foreground tabular-nums">{option.offset}</span>
+    </span>
+  )
+}
+
 export default function ReminderSettingsPanel({
   timezone,
   reminderHour,
@@ -63,6 +101,7 @@ export default function ReminderSettingsPanel({
 }: ReminderSettingsPanelProps) {
   const [mounted, setMounted] = useState(false)
   const controlsDisabled = !mounted || Boolean(disabled)
+  const selectedTimeZoneOption = getTimeZoneOption(timezone) ?? fallbackTimeZoneOption(timezone)
 
   useEffect(() => {
     setMounted(true)
@@ -119,14 +158,28 @@ export default function ReminderSettingsPanel({
           <div className="grid gap-2">
             <Label>Таймзона</Label>
             <Select value={timezone} onValueChange={onTimezoneChange} disabled={controlsDisabled}>
-              <SelectTrigger>
-                <SelectValue />
+              <SelectTrigger className="w-full [&>span]:flex-1">
+                <TimeZoneOptionLabel option={selectedTimeZoneOption} trigger />
               </SelectTrigger>
-              <SelectContent>
-                {RUSSIAN_TIMEZONES.map((item) => (
-                  <SelectItem key={item.timeZone} value={item.timeZone}>
-                    {formatRussianTimeZoneLabel(item.city, item.timeZone)}
-                  </SelectItem>
+              <SelectContent className="min-w-[min(27rem,calc(100vw-1.5rem))]">
+                {!getTimeZoneOption(timezone) && (
+                  <>
+                    <SelectItem value={selectedTimeZoneOption.timeZone} className="pr-10">
+                      <TimeZoneOptionLabel option={selectedTimeZoneOption} />
+                    </SelectItem>
+                    <SelectSeparator />
+                  </>
+                )}
+                {TIMEZONE_GROUPS.map((group, groupIndex) => (
+                  <SelectGroup key={group.label}>
+                    <SelectLabel>{group.label}</SelectLabel>
+                    {group.options.map((item) => (
+                      <SelectItem key={item.timeZone} value={item.timeZone} className="pr-10">
+                        <TimeZoneOptionLabel option={item} />
+                      </SelectItem>
+                    ))}
+                    {groupIndex < TIMEZONE_GROUPS.length - 1 && <SelectSeparator />}
+                  </SelectGroup>
                 ))}
               </SelectContent>
             </Select>

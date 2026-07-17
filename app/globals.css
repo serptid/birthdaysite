@@ -111,6 +111,9 @@
     position: relative;
     max-width: 100vw;
   }
+  input[type="checkbox"] {
+    accent-color: var(--primary);
+  }
 }
 
 @keyframes reminder-panel-slide-in {
